@@ -1,0 +1,3 @@
+[submodule "external/compiler_ir"]
+	path = external/compiler_ir
+	url = https://gitee.com/happy-traveller/compiler_ir
