@@ -108,6 +108,12 @@ namespace front::lexer {
     }
 
 
+
+
+    void DFA::minimalize() {
+    }
+
+
     std::ostream &operator<<(std::ostream &os, const DFA &dfa) {
         os << "```mermaid\n";
         os << "graph TD;\n";

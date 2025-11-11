@@ -30,6 +30,8 @@ namespace front::lexer {
 
         friend std::ostream &operator<<(std::ostream &os, const DFA &dfa);
 
+        void minimalize();
+
         int start_state() { return start_; }
 
         const std::vector<DFAState> &states() const { return st_; }

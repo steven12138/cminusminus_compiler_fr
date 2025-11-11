@@ -7,7 +7,14 @@ set(CMAKE_CXX_STANDARD 26)
 # for vscode extensions
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-find_package(magic_enum CONFIG REQUIRED)
+find_package(magic_enum CONFIG QUIET)
+if (magic_enum_FOUND)
+    message(STATUS "magic_enum found: enabling pretty enums name")
+    add_compile_definitions(USE_MAGIC_ENUM)
+else ()
+    message(STATUS "magic_enum not found, use integer values for enums")
+endif ()
+
 
 file(GLOB IR_SOURCES CONFIGURE_DEPENDS
         "${CMAKE_CURRENT_SOURCE_DIR}/external/compiler_ir/src/*.cpp")

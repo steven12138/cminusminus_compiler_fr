@@ -1,6 +1,9 @@
 #pragma once
 #include <string>
+#ifdef USE_MAGIC_ENUM
 #include <magic_enum/magic_enum.hpp>
+#endif
+
 
 namespace front {
     struct Location {
@@ -37,9 +40,16 @@ namespace front {
         std::string lexeme{};
 
         friend std::ostream &operator<<(std::ostream &os, const Token &token) {
+#ifdef USE_MAGIC_ENUM
             os << token.lexeme << "\t" << "Token(Type::" << magic_enum::enum_name(token.type)
                     << ", Category::" << magic_enum::enum_name(token.category)
                     << ", Location(" << token.loc.line << "," << token.loc.column << "))";
+#else
+            os << token.lexeme << "\t" << "Token(Type::" << static_cast<int>(token.type)
+                    << ", Category::" << static_cast<int>(token.category)
+                    << ", Location(" << token.loc.line << "," << token.loc.column << "))";
+#endif
+
             return os;
         }
     };
