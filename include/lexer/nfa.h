@@ -3,11 +3,12 @@
 #include <memory>
 #include <vector>
 #include <limits>
+#include <unordered_set>
 
 #include "symbol.h"
 
 
-namespace lexer {
+namespace front::lexer {
     struct NFATrans {
         Symbol sym{};
         int to{-1};
@@ -38,6 +39,14 @@ namespace lexer {
         int start_state() const { return start_; }
 
         void set_start(const int state) { start_ = state; }
+
+        std::vector<int> epsilon_closure(const std::vector<int> &state) const;
+
+        std::vector<int> move(const std::vector<int> &states, Symbol target);
+
+        std::vector<Symbol> collect_symbols(const std::vector<int>& set) const;
+
+        std::pair<int, int> computing_accept(const std::vector<int>& state) const;
 
         int num_states() const { return static_cast<int>(st_.size()); }
         const std::vector<NFAState> &states() const { return st_; }

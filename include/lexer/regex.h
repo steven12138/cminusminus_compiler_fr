@@ -14,7 +14,7 @@ namespace front::lexer {
         explicit Regex(std::string pattern) : pattern(std::move(pattern)) {
         }
 
-        std::unique_ptr<::lexer::NFA> compile(int token, int priority);
+        std::unique_ptr<NFA> compile(int token, int priority);
 
     private:
         struct NFAFrag {
@@ -37,11 +37,11 @@ namespace front::lexer {
             std::string pattern{};
             size_t pos{};
             bool insensitive{};
-            std::unique_ptr<::lexer::NFA> nfa;
+            std::unique_ptr<NFA> nfa;
 
             explicit RegexParser(std::string pattern, bool insensitive = false)
                 : pattern(std::move(pattern)), pos(0), insensitive(insensitive),
-                  nfa(std::make_unique<::lexer::NFA>()) {
+                  nfa(std::make_unique<NFA>()) {
             }
 
             char curr() const {

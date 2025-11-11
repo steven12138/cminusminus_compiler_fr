@@ -23,7 +23,7 @@ foreach (TEST_SRC IN LISTS TEST_SOURCES)
             "${CMAKE_SOURCE_DIR}/include"
             "${CMAKE_SOURCE_DIR}/external/compiler_ir/include"
     )
-    target_link_libraries(${TARGET_NAME} PRIVATE frontend_utils compiler_ir)
+    target_link_libraries(${TARGET_NAME} PRIVATE frontend_utils compiler_ir magic_enum::magic_enum)
 
     set_target_properties(${TARGET_NAME} PROPERTIES
             RUNTIME_OUTPUT_DIRECTORY "${TEST_BIN_DIR}"

@@ -4,7 +4,7 @@
 
 
 int main() {
-    front::lexer::Regex regex{"(ab)*"};
+    front::lexer::Regex regex{"(ab)+"};
     try {
         auto nfa = regex.compile(1, 0);
         std::cout << (*nfa) << std::endl;

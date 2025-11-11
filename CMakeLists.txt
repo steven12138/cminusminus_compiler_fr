@@ -2,10 +2,12 @@ cmake_minimum_required(VERSION 3.20)
 
 project(c_minus_frontend LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 26)
 
 # for vscode extensions
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+find_package(magic_enum CONFIG REQUIRED)
 
 file(GLOB IR_SOURCES CONFIGURE_DEPENDS
         "${CMAKE_CURRENT_SOURCE_DIR}/external/compiler_ir/src/*.cpp")

@@ -1,7 +1,7 @@
 #pragma once
 
 
-namespace lexer {
+namespace front::lexer {
     using Symbol = int;
 
     constexpr Symbol EPS = -1;

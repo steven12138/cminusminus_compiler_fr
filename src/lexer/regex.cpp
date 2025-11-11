@@ -2,7 +2,7 @@
 
 
 namespace front::lexer {
-    std::unique_ptr<::lexer::NFA> Regex::compile(int token, int priority) {
+    std::unique_ptr<NFA> Regex::compile(int token, int priority) {
         auto parser = RegexParser(pattern, false);
 
         if (pattern[0] == '?' && pattern[1] == 'i' && pattern[2] == ':') {
@@ -43,8 +43,8 @@ namespace front::lexer {
 
         const auto out = empty_fragment();
         for (const auto &frag: branches) {
-            nfa->add_edge(out.start, frag.start, ::lexer::EPS);
-            nfa->add_edge(frag.accept, out.accept, ::lexer::EPS);
+            nfa->add_edge(out.start, frag.start, EPS);
+            nfa->add_edge(frag.accept, out.accept, EPS);
         }
         return out;
     }
@@ -63,7 +63,7 @@ namespace front::lexer {
         }
 
         for (size_t i = 1; i < frags.size(); ++i) {
-            nfa->add_edge(frags[i - 1].accept, frags[i].start, ::lexer::EPS);
+            nfa->add_edge(frags[i - 1].accept, frags[i].start, EPS);
         }
 
         return {frags.front().start, frags.back().accept};
@@ -77,12 +77,12 @@ namespace front::lexer {
             if (char c = curr(); c == '*' || c == '+') {
                 consume();
                 auto res = empty_fragment();
-                nfa->add_edge(res.start, f.start, ::lexer::EPS);
-                nfa->add_edge(f.accept, res.accept, ::lexer::EPS);
-                nfa->add_edge(f.accept, f.start, ::lexer::EPS);
+                nfa->add_edge(res.start, f.start, EPS);
+                nfa->add_edge(f.accept, res.accept, EPS);
+                nfa->add_edge(f.accept, f.start, EPS);
 
                 if (c == '*')
-                    nfa->add_edge(res.start, res.accept, ::lexer::EPS);
+                    nfa->add_edge(res.start, res.accept, EPS);
 
                 f = res;
             } else break;
@@ -109,7 +109,7 @@ namespace front::lexer {
         if (c == '.') {
             consume();
             auto f = empty_fragment();
-            nfa->add_edge(f.start, f.accept, ::lexer::ANY);
+            nfa->add_edge(f.start, f.accept, ANY);
             return f;
         }
 
