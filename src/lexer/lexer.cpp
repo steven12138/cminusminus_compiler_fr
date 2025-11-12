@@ -7,6 +7,7 @@ namespace front::lexer {
     Lexer::Lexer(std::string source) : source(std::move(source)), row{1}, column{1} {
         const auto nfa = init_rules();
         dfa = std::make_unique<DFA>(nfa);
+        dfa->minimalize();
     }
 
     const std::vector<Token> &Lexer::tokenize() {

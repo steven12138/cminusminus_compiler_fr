@@ -1,5 +1,6 @@
 #include "lexer/dfa.h"
 
+#include <algorithm>
 #include <iostream>
 #include <unordered_map>
 
@@ -14,8 +15,10 @@ namespace front::lexer {
     struct VectorHash {
         size_t operator()(const std::vector<int> &v) const noexcept {
             // FNV-1a hash
+            std::vector<int> copy(v);
+            std::ranges::sort(copy);
             uint64_t h = 14695981039346656037ull;
-            for (const int x: v) {
+            for (const int x: copy) {
                 const uint64_t y = static_cast<uint64_t>(x);
                 // hash combine
                 h ^= y + 0x9e3779b97f4a7c15ull + (h << 6) + (h >> 2);
@@ -108,9 +111,139 @@ namespace front::lexer {
     }
 
 
+    void DFA::dfs(int u, std::vector<bool> &reachable) const {
+        reachable[u] = 1;
+        auto state = st_[u];
+        for (const auto &[_, to]: state.edges) {
+            if (!reachable[to]) {
+                dfs(to, reachable);
+            }
+        }
+    }
 
+    std::vector<Symbol> DFA::collect_alphabet() {
+        std::unordered_set<Symbol> alphabet;
+        for (const auto &st: st_) {
+            for (const auto &[sym, _]: st.edges) {
+                alphabet.insert(sym);
+            }
+        }
+        return {alphabet.begin(), alphabet.end()};
+    }
+
+
+    std::vector<int> DFA::find_predecessors(const Group &group, Symbol sym) const {
+        std::vector<int> predecessors;
+        std::unordered_set<int> in_group{group.states.begin(), group.states.end()};
+        for (int i = 0; i < static_cast<int>(st_.size()); i++) {
+            const auto &state = st_[i];
+            for (const auto &[s, to]: state.edges) {
+                if (s == sym && in_group.contains(to)) {
+                    predecessors.push_back(i);
+                    break;
+                }
+            }
+        }
+        return predecessors;
+    }
+
+
+    struct PairHash {
+        size_t operator()(const std::pair<int, int> &p) const noexcept {
+            uint64_t h = 14695981039346656037ull;
+            auto combine = [&](int x) {
+                auto y = static_cast<uint64_t>(x);
+                h ^= y + 0x9e3779b97f4a7c15ull + (h << 6) + (h >> 2);
+            };
+            combine(p.first);
+            combine(p.second);
+            return h;
+        }
+    };
 
     void DFA::minimalize() {
+        int nStates = static_cast<int>(st_.size());
+
+        Partition p{nStates};
+
+        // 1. remove unreachable states
+        std::vector reachable(st_.size(), false);
+        dfs(start_, reachable);
+
+        // 2. initial partition
+        auto alphabet = collect_alphabet();
+
+        std::vector<int> unacceptStates;
+        unacceptStates.reserve(nStates);
+        std::unordered_map<std::pair<int, int>, int, PairHash> acceptMap;
+        std::vector<int> workList;
+
+        for (int i = 0; i < static_cast<int>(st_.size()); i++) {
+            if (!reachable[i]) continue;
+            // non-accepting state
+            if (st_[i].token < 0) {
+                unacceptStates.push_back(i);
+            }
+        }
+        if (!unacceptStates.empty()) {
+            int gid = p.add_group(std::move(unacceptStates), false, -1, -1);
+            workList.push_back(gid);
+        }
+
+        // accepting states
+        for (int i = 0; i < static_cast<int>(st_.size()); i++) {
+            if (!reachable[i]) continue;
+            if (st_[i].token >= 0) {
+                auto it = acceptMap.find({st_[i].token, st_[i].priority});
+                if (it == acceptMap.end()) {
+                    const int gid = p.add_group({i}, true, st_[i].token, st_[i].priority);
+                    acceptMap[{st_[i].token, st_[i].priority}] = gid;
+                    workList.push_back(gid);
+                } else {
+                    int gid = it->second;
+                    p.groups[gid].states.push_back(i);
+                    p.state_to_group[i] = gid;
+                }
+            }
+        }
+
+        for (size_t i = 0; i < workList.size(); i++) {
+            int splitter = workList[i];
+            auto &A = p.groups[splitter];
+            for (const auto &sym: alphabet) {
+                auto X = find_predecessors(A, sym);
+                if (X.empty()) continue;
+                for (int k = 0; k < static_cast<int>(p.groups.size()); k++) {
+                    if (!p.groups[k].valid) continue;
+                    int new_gid = p.split(k, X);
+                    if (new_gid >= 0) {
+                        workList.push_back(new_gid);
+                    }
+                }
+            }
+        }
+
+        DFA minDFA{};
+        minDFA.st_.reserve(p.groups.size());
+        for (const auto &group: p.groups) {
+            if (!group.valid) continue;
+            int newState = minDFA.new_state();
+            minDFA.st_[newState].token = group.token;
+            minDFA.st_[newState].priority = group.priority;
+        }
+        minDFA.start_ = p.find(start_);
+
+        for (int i = 0; i < static_cast<int>(st_.size()); i++) {
+            if (!reachable[i]) continue;
+            const int from_gid = p.find(i);
+            for (const auto &state = st_[i];
+                 const auto &[sym, to]: state.edges) {
+                if (!reachable[to]) continue;
+                const int to_gid = p.find(to);
+                minDFA.add_edge(from_gid, to_gid, sym);
+            }
+        }
+        *this = std::move(minDFA);
     }
 
 
@@ -128,20 +261,16 @@ namespace front::lexer {
                         << " (accept rules " << state.token
                         << ", priority " << state.priority << ")\"]);\n";
             } else {
-                // S%d([\"S%d\"]);
                 os << "  S" << i << "([\"S" << i << "\"]);\n";
             }
 
             for (const auto &[sym, to]: state.edges) {
                 if (sym == EPS) {
-                    // S%d -- ε --> S%d;
                     os << "  S" << i << " -- ε --> S" << to << ";\n";
                 } else if (std::isprint(static_cast<unsigned char>(sym))) {
-                    // S%d -- 'c' --> S%d;
                     os << "  S" << i << " -- '"
                             << static_cast<char>(sym) << "' --> S" << to << ";\n";
                 } else {
-                    // S%d -- [num] --> S%d;
                     os << "  S" << i << " -- [" << sym << "] --> S" << to << ";\n";
                 }
             }
