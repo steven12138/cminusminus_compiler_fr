@@ -2,7 +2,7 @@
 
 
 namespace front::grammar {
-    Grammar::Grammar() {
+    void Grammar::init_rules() {
         // Augment grammar: Program' -> Program
         add_production("ProgramPrime", {NT("Program")});
 
