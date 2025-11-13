@@ -4,21 +4,25 @@
 #include <limits>
 
 #include "nfa.h"
-#include "symbol.h"
 
 
-namespace front::lexer {
+namespace front {
+    template<typename T>
     struct DFATrans {
-        Symbol sym;
+        T sym;
         int to;
     };
 
+    template<typename T, typename V>
     struct DFAState {
-        std::vector<DFATrans> edges;
+        std::vector<DFATrans<T> > edges;
         int token{-1};
         int priority{std::numeric_limits<int>::max()};
+        V val{};
     };
 
+
+    template<typename T, typename V=int>
     class DFA {
     public:
         struct Group {
@@ -88,28 +92,36 @@ namespace front::lexer {
 
         explicit DFA() = default;
 
-        explicit DFA(const std::unique_ptr<NFA> &);
+        explicit DFA(const std::unique_ptr<NFA<T> > &);
 
-        void add_edge(int u, int v, Symbol sym);
+        void add_edge(int u, int v, T sym);
 
-        int transition(int state, Symbol sym) const;
+        int transition(int state, T sym) const;
 
-        friend std::ostream &operator<<(std::ostream &os, const DFA &dfa);
 
         void dfs(int u, std::vector<bool> &reachable) const;
 
-        std::vector<Symbol> collect_alphabet();
+        std::vector<T> collect_alphabet();
 
-        std::vector<int> find_predecessors(const Group &group, Symbol sym) const;
+        std::vector<int> find_predecessors(const Group &group, T sym, const std::vector<std::vector<DFATrans<T>>> &rev) const;
+
+        using RevEdge = DFATrans<T>;
+        using RevGraph = std::vector<std::vector<RevEdge> >;
+
+        RevGraph build_reverse_edges(const std::vector<bool> &reachable) const;
 
         void minimalize();
 
-        int start_state() { return start_; }
+        int start_state() const { return start_; }
 
-        const std::vector<DFAState> &states() const { return st_; }
+        const std::vector<DFAState<T, V> > &states() const { return st_; }
+
+
+        template<typename U, typename W>
+        friend std::ostream &operator<<(std::ostream &os, const DFA<U, W> &dfa);
 
     private:
-        std::vector<DFAState> st_;
+        std::vector<DFAState<T, V> > st_;
         int start_{-1};
     };
 }

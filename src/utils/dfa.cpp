@@ -1,13 +1,15 @@
-#include "lexer/dfa.h"
+#include "../../include/utils/dfa.h"
 
 #include <algorithm>
 #include <iostream>
 #include <unordered_map>
+#include <unordered_set>
 
 
-namespace front::lexer {
-    int DFA::new_state() {
-        st_.emplace_back(DFAState{});
+namespace front {
+    template<typename T, typename V>
+    int DFA<T, V>::new_state() {
+        st_.emplace_back(DFAState<T, V>{});
         return static_cast<int>(st_.size() - 1);
     }
 
@@ -15,10 +17,8 @@ namespace front::lexer {
     struct VectorHash {
         size_t operator()(const std::vector<int> &v) const noexcept {
             // FNV-1a hash
-            std::vector<int> copy(v);
-            std::ranges::sort(copy);
             uint64_t h = 14695981039346656037ull;
-            for (const int x: copy) {
+            for (const int x: v) {
                 const uint64_t y = static_cast<uint64_t>(x);
                 // hash combine
                 h ^= y + 0x9e3779b97f4a7c15ull + (h << 6) + (h >> 2);
@@ -27,7 +27,9 @@ namespace front::lexer {
         }
     };
 
-    DFA::DFA(const std::unique_ptr<NFA> &nfa) {
+
+    template<typename T, typename V>
+    DFA<T, V>::DFA(const std::unique_ptr<NFA<T> > &nfa) {
         if (nfa->num_states() == 0) {
             start_ = 0;
             return;
@@ -46,6 +48,7 @@ namespace front::lexer {
         subsets.push_back(startStates);
         start_ = new_state();
         dfa_states.push_back(start_);
+        std::ranges::sort(subsets[0]);
         subset_idx.emplace(subsets[0], start_);
         {
             auto [token, priority] = nfa->computing_accept(subsets[0]);
@@ -54,15 +57,15 @@ namespace front::lexer {
         }
 
         for (size_t i = 0; i < subsets.size(); i++) {
-            auto T = subsets[i];
+            auto t = subsets[i];
             const int from = dfa_states[i];
-            for (auto symbols = nfa->collect_symbols(T);
+            for (auto symbols = nfa->collect_symbols(t);
                  const auto &sym: symbols) {
                 // subset = epsilon-closure(move(T, sym))
-                auto moveStates = nfa->move(T, sym);
+                auto moveStates = nfa->move(t, sym);
                 if (moveStates.empty()) continue;
                 auto closure = nfa->epsilon_closure(moveStates);
-
+                std::ranges::sort(closure);
                 // check if closure is already registered
                 auto it = subset_idx.find(closure);
                 int toState;
@@ -84,7 +87,9 @@ namespace front::lexer {
         }
     }
 
-    void DFA::add_edge(int u, int v, Symbol sym) {
+
+    template<typename T, typename V>
+    void DFA<T, V>::add_edge(int u, int v, T sym) {
         auto &state = st_[u];
         for (auto &edge: state.edges) {
             if (edge.sym == sym) {
@@ -96,14 +101,16 @@ namespace front::lexer {
         state.edges.emplace_back(sym, v);
     }
 
-    int DFA::transition(int state, Symbol sym) const {
+
+    template<typename T, typename V>
+    int DFA<T, V>::transition(int state, T sym) const {
         int any_target = -1;
         const auto &st = st_[state];
         for (const auto &edge: st.edges) {
             if (edge.sym == sym) {
                 return edge.to;
             }
-            if (sym != ANY && edge.sym == ANY) {
+            if (sym != lexer::ANY && edge.sym == lexer::ANY) {
                 any_target = edge.to;
             }
         }
@@ -111,18 +118,21 @@ namespace front::lexer {
     }
 
 
-    void DFA::dfs(int u, std::vector<bool> &reachable) const {
+    template<typename T, typename V>
+    void DFA<T, V>::dfs(int u, std::vector<bool> &reachable) const {
         reachable[u] = 1;
-        auto state = st_[u];
-        for (const auto &[_, to]: state.edges) {
+        for (const auto &state = st_[u];
+             const auto &[_, to]: state.edges) {
             if (!reachable[to]) {
                 dfs(to, reachable);
             }
         }
     }
 
-    std::vector<Symbol> DFA::collect_alphabet() {
-        std::unordered_set<Symbol> alphabet;
+
+    template<typename T, typename V>
+    std::vector<T> DFA<T, V>::collect_alphabet() {
+        std::unordered_set<T> alphabet;
         for (const auto &st: st_) {
             for (const auto &[sym, _]: st.edges) {
                 alphabet.insert(sym);
@@ -132,19 +142,40 @@ namespace front::lexer {
     }
 
 
-    std::vector<int> DFA::find_predecessors(const Group &group, Symbol sym) const {
+    template<typename T, typename V>
+    std::vector<int> DFA<T, V>::find_predecessors(const Group &group, T sym, const RevGraph &rev) const {
         std::vector<int> predecessors;
-        std::unordered_set<int> in_group{group.states.begin(), group.states.end()};
-        for (int i = 0; i < static_cast<int>(st_.size()); i++) {
-            const auto &state = st_[i];
-            for (const auto &[s, to]: state.edges) {
-                if (s == sym && in_group.contains(to)) {
-                    predecessors.push_back(i);
-                    break;
+        predecessors.reserve(group.states.size());
+        std::unordered_set<int> seen;
+
+        for (int q: group.states) {
+            if (q < 0 || q >= static_cast<int>(rev.size())) continue;
+            const auto &inEdges = rev[q];
+            for (const auto &e: inEdges) {
+                if (e.sym == sym && !seen.contains(e.to)) {
+                    seen.insert(e.to);
+                    predecessors.push_back(e.to);
                 }
             }
         }
         return predecessors;
+    }
+
+    template<typename T, typename V>
+    DFA<T, V>::RevGraph DFA<T, V>::build_reverse_edges(const std::vector<bool> &reachable) const {
+        const int nStates = static_cast<int>(st_.size());
+        RevGraph rev(nStates);
+
+        for (int from = 0; from < nStates; ++from) {
+            if (!reachable[from]) continue;
+            const auto &st = st_[from];
+            for (const auto &[sym, to]: st.edges) {
+                if (to < 0 || to >= nStates) continue;
+                if (!reachable[to]) continue;
+                rev[to].push_back(RevEdge{sym, from});
+            }
+        }
+        return rev;
     }
 
 
@@ -161,7 +192,9 @@ namespace front::lexer {
         }
     };
 
-    void DFA::minimalize() {
+
+    template<typename T, typename V>
+    void DFA<T, V>::minimalize() {
         int nStates = static_cast<int>(st_.size());
 
         Partition p{nStates};
@@ -169,9 +202,20 @@ namespace front::lexer {
         // 1. remove unreachable states
         std::vector reachable(st_.size(), false);
         dfs(start_, reachable);
+        auto rev = build_reverse_edges(reachable);
 
         // 2. initial partition
         auto alphabet = collect_alphabet();
+
+        std::vector<std::vector<RevEdge> > revGraph(nStates);
+        for (int from = 0; from < nStates; ++from) {
+            if (!reachable[from]) continue;
+            for (const auto &st = st_[from];
+                 const auto &[sym, to]: st.edges) {
+                if (!reachable[to]) continue;
+                revGraph[to].push_back(RevEdge{sym, from});
+            }
+        }
 
         std::vector<int> unacceptStates;
         unacceptStates.reserve(nStates);
@@ -211,7 +255,7 @@ namespace front::lexer {
             int splitter = workList[i];
             auto &A = p.groups[splitter];
             for (const auto &sym: alphabet) {
-                auto X = find_predecessors(A, sym);
+                auto X = find_predecessors(A, sym, rev);
                 if (X.empty()) continue;
                 for (int k = 0; k < static_cast<int>(p.groups.size()); k++) {
                     if (!p.groups[k].valid) continue;
@@ -247,7 +291,8 @@ namespace front::lexer {
     }
 
 
-    std::ostream &operator<<(std::ostream &os, const DFA &dfa) {
+    template<typename U, typename W=int>
+    std::ostream &operator<<(std::ostream &os, const DFA<U, W> &dfa) {
         os << "```mermaid\n";
         os << "graph TD;\n";
         os << "  start((start)) --> S" << dfa.start_ << ";\n";
@@ -265,9 +310,7 @@ namespace front::lexer {
             }
 
             for (const auto &[sym, to]: state.edges) {
-                if (sym == EPS) {
-                    os << "  S" << i << " -- ε --> S" << to << ";\n";
-                } else if (std::isprint(static_cast<unsigned char>(sym))) {
+                if (std::isprint(static_cast<unsigned char>(sym))) {
                     os << "  S" << i << " -- '"
                             << static_cast<char>(sym) << "' --> S" << to << ";\n";
                 } else {
@@ -279,4 +322,9 @@ namespace front::lexer {
         os << "```\n";
         return os;
     }
+
+
+    template class DFA<lexer::Symbol>;
+
+    template std::ostream &operator<<<lexer::Symbol>(std::ostream &, const DFA<lexer::Symbol> &);
 }

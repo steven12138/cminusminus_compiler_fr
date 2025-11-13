@@ -2,7 +2,7 @@
 // Created by steven on 11/11/25.
 //
 
-#include "../../include/lexer/nfa.h"
+#include "../../include/utils/nfa.h"
 
 #include <algorithm>
 #include <iostream>
@@ -10,24 +10,31 @@
 #include <unordered_set>
 
 
-namespace front::lexer {
-    int NFA::new_state() {
+namespace front {
+    template<typename T, typename V>
+    int NFA<T, V>::new_state() {
         this->st_.push_back({{}, -1,INT_MAX});
         return static_cast<int>(this->st_.size() - 1);
     }
 
-    void NFA::add_edge(int from, int to, Symbol sym) {
+
+    template<typename T, typename V>
+    void NFA<T, V>::add_edge(int from, int to, T sym) {
         this->st_[from].edges.push_back({sym, to});
     }
 
-    void NFA::set_accept(int state, int token, int priority) {
+
+    template<typename T, typename V>
+    void NFA<T, V>::set_accept(int state, int token, int priority) {
         if (auto &st = this->st_[state]; st.priority > priority) {
             st.token = token;
             st.priority = priority;
         }
     }
 
-    std::unique_ptr<NFA> NFA::union_many(const std::vector<std::unique_ptr<NFA> > &subs) {
+
+    template<typename T, typename V>
+    std::unique_ptr<NFA<T, V> > NFA<T, V>::union_many(const std::vector<std::unique_ptr<NFA> > &subs) {
         std::unique_ptr<NFA> out = std::make_unique<NFA>();
 
         if (subs.empty()) {
@@ -56,12 +63,14 @@ namespace front::lexer {
                 for (auto &[sym, to]: out->st_[base + s].edges)
                     to += base;
 
-            out->add_eps(out->start_state(), base + sub->start_state());
+            out->add_edge(out->start_state(), base + sub->start_state(), EPS);
         }
         return out;
     }
 
-    std::vector<int> NFA::epsilon_closure(const std::vector<int> &state) const {
+
+    template<typename T, typename V>
+    std::vector<int> NFA<T, V>::epsilon_closure(const std::vector<int> &state) const {
         std::vector<int> stack = state;
         std::unordered_set<int> exists{state.begin(), state.end()};
         std::vector<int> res{state.begin(), state.end()};
@@ -81,7 +90,9 @@ namespace front::lexer {
         return res;
     }
 
-    std::vector<int> NFA::move(const std::vector<int> &states, Symbol target) {
+
+    template<typename T, typename V>
+    std::vector<int> NFA<T, V>::move(const std::vector<int> &states, T target) {
         std::unordered_set<int> exists{};
         std::vector<int> res;
         for (const auto &st: states) {
@@ -96,8 +107,10 @@ namespace front::lexer {
         return res;
     }
 
-    std::vector<Symbol> NFA::collect_symbols(const std::vector<int> &set) const {
-        std::unordered_set<Symbol> symbols;
+
+    template<typename T, typename V>
+    std::vector<T> NFA<T, V>::collect_symbols(const std::vector<int> &set) const {
+        std::unordered_set<T> symbols;
         for (const auto &st: set) {
             for (const auto &[sym, to]: st_[st].edges) {
                 if (sym != EPS) {
@@ -108,7 +121,9 @@ namespace front::lexer {
         return {symbols.begin(), symbols.end()};
     }
 
-    std::pair<int, int> NFA::computing_accept(const std::vector<int> &state) const {
+
+    template<typename T, typename V>
+    std::pair<int, int> NFA<T, V>::computing_accept(const std::vector<int> &state) const {
         int token = -1;
         int priority = std::numeric_limits<int>::max();
 
@@ -122,7 +137,8 @@ namespace front::lexer {
     }
 
 
-    std::ostream &operator<<(std::ostream &os, const NFA &nfa) {
+    template<typename U, typename W=int>
+    std::ostream &operator<<(std::ostream &os, const NFA<U, W> &nfa) {
         os << "```mermaid\n";
         os << "graph TD;\n";
         os << "  start((start)) --> S" << nfa.start_ << ";\n";
@@ -136,7 +152,7 @@ namespace front::lexer {
                 os << "  S" << (&state - &nfa.st_[0]) << "([\"S" << (&state - &nfa.st_[0]) << "\"]);\n";
             }
             for (const auto &[sym, to]: state.edges) {
-                if (sym == EPS) {
+                if (sym == NFA<U, W>::EPS) {
                     os << "  S" << (&state - &nfa.st_[0]) << " -- ε --> S" << to << ";\n";
                 } else if (isprint(sym)) {
                     os << "  S" << (&state - &nfa.st_[0]) << " -- '" << static_cast<char>(sym) << "' --> S" << to
@@ -150,4 +166,8 @@ namespace front::lexer {
         os << "```\n";
         return os;
     }
+
+    template class NFA<lexer::Symbol>;
+
+    template std::ostream &operator<<<lexer::Symbol>(std::ostream &, const NFA<lexer::Symbol> &);
 }

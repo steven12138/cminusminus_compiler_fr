@@ -1,21 +1,36 @@
 #include "lexer/lexer.h"
 
-#include "lexer/dfa.h"
+#include "../../include/utils/dfa.h"
 #include "lexer/regex.h"
+#include "utils/timer.h"
 
 namespace front::lexer {
-    Lexer::Lexer(std::string source) : source(std::move(source)), row{1}, column{1} {
+    Lexer::Lexer(std::string source)
+        : source_(std::move(source)), row{1}, column{1} {
+        MESSAGE_TIMER(a, "test");
         const auto nfa = init_rules();
-        dfa = std::make_unique<DFA>(nfa);
+        STOP_TIMER(a);
+
+        MESSAGE_TIMER(b, "DFA Construction");
+        dfa = std::make_unique<DFA<Symbol> >(nfa);
+        STOP_TIMER(b);
+
+        MESSAGE_TIMER(c, "DFA Minimization");
         dfa->minimalize();
+        STOP_TIMER(c);
     }
 
+    Lexer::Lexer() : Lexer("") {
+    }
+
+
     const std::vector<Token> &Lexer::tokenize() {
+        if (source_.empty()) throw std::runtime_error("Lexer::tokenize() source is empty");
         if (!tokens.empty()) return tokens;
         if (dfa->start_state() == -1)
             throw std::runtime_error("DFA has no start state");
         size_t pos = 0;
-        while (pos < source.size()) {
+        while (pos < source_.size()) {
             int state = dfa->start_state();
             size_t cursor = pos;
             int last_accepting_state = -1;
@@ -24,8 +39,8 @@ namespace front::lexer {
                 last_accepting_state = state;
                 last_accepting_pos = cursor;
             }
-            while (cursor < source.size() && state >= 0) {
-                auto c = source[cursor];
+            while (cursor < source_.size() && state >= 0) {
+                auto c = source_[cursor];
                 int next = dfa->transition(state, c);
                 if (next < 0) break;
                 state = next;
@@ -42,7 +57,7 @@ namespace front::lexer {
                     std::get<1>(rules[accept]),
                     std::get<2>(rules[accept]),
                     {row, column},
-                    source.substr(pos, last_accepting_pos - pos)
+                    source_.substr(pos, last_accepting_pos - pos)
                 };
                 pos = last_accepting_pos;
             } else {
@@ -50,7 +65,7 @@ namespace front::lexer {
                     TokenType::Invalid,
                     TokenCategory::Invalid,
                     {row, column},
-                    {1, source[pos]}
+                    {1, source_[pos]}
                 };
                 pos++;
             }
@@ -59,6 +74,14 @@ namespace front::lexer {
         }
         optimize();
         return tokens;
+    }
+
+    const std::vector<Token> &Lexer::tokenize(const std::string &source) {
+        source_ = source;
+        tokens.clear();
+        row = 1;
+        column = 1;
+        return tokenize();
     }
 
     void Lexer::optimize() {
@@ -74,7 +97,7 @@ namespace front::lexer {
     }
 
 
-    std::unique_ptr<NFA> Lexer::init_rules() {
+    std::unique_ptr<NFA<Symbol> > Lexer::init_rules() {
         rules = {
             {"( |\t)+", TokenType::Spacer, TokenCategory::Spacer},
             {"\r\n", TokenType::Spacer, TokenCategory::Spacer},
@@ -122,14 +145,14 @@ namespace front::lexer {
             {".", TokenType::Invalid, TokenCategory::Invalid},
         };
 
-        std::vector<std::unique_ptr<NFA> > subs{};
+        std::vector<std::unique_ptr<NFA<Symbol> > > subs{};
         subs.reserve(rules.size());
         for (size_t i = 0; i < rules.size(); ++i) {
             const auto &[pattern, token_type, token_category] = rules[i];
             auto nfa = Regex(pattern).compile(i, i);
             subs.push_back(std::move(nfa));
         }
-        auto master_nfa = NFA::union_many(subs);
+        auto master_nfa = NFA<Symbol>::union_many(subs);
         return master_nfa;
     }
 

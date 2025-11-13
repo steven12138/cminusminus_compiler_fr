@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-#include "lexer/dfa.h"
+#include "utils/dfa.h"
 
 
 int main() {
@@ -10,7 +10,7 @@ int main() {
     try {
         auto nfa = regex.compile(1, 0);
 
-        auto dfa = std::make_unique<front::lexer::DFA>(nfa);
+        auto dfa = std::make_unique<front::DFA<front::lexer::Symbol> >(nfa);
         std::cout << (*dfa) << std::endl;
         dfa->minimalize();
         std::cout << (*dfa) << std::endl;

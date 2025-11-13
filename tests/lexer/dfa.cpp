@@ -1,8 +1,8 @@
 #include <iostream>
 #include <sstream>
 #include "lexer/lexer.h"
-#include "lexer/dfa.h"
-
+#include "../../include/utils/dfa.h"
+#include "utils/timer.h"
 using namespace std;
 
 int main() {
@@ -11,16 +11,18 @@ int main() {
 
     std::ostringstream buf;
     std::string line;
+    INIT_TIMER(Lexer);
+    front::lexer::Lexer lexer;
+    STOP_TIMER(Lexer);
+
 
     while (std::getline(cin, line)) {
         buf << line << '\n';
     }
 
-    std::string source = buf.str();
-
-    front::lexer::Lexer lexer(source);
-    const auto &token = lexer.tokenize();
-    for (const auto &t : token) {
+    const std::string source = buf.str();
+    const auto &token = lexer.tokenize(source);
+    for (const auto &t: token) {
         cout << t << '\n';
     }
 

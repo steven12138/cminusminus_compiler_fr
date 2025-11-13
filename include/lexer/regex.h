@@ -3,7 +3,7 @@
 #include <string>
 #include <utility>
 
-#include "nfa.h"
+#include "../utils/nfa.h"
 
 
 namespace front::lexer {
@@ -14,7 +14,7 @@ namespace front::lexer {
         explicit Regex(std::string pattern) : pattern(std::move(pattern)) {
         }
 
-        std::unique_ptr<NFA> compile(int token, int priority);
+        std::unique_ptr<NFA<Symbol> > compile(int token, int priority) const;
 
     private:
         struct NFAFrag {
@@ -37,11 +37,11 @@ namespace front::lexer {
             std::string pattern{};
             size_t pos{};
             bool insensitive{};
-            std::unique_ptr<NFA> nfa;
+            std::unique_ptr<NFA<Symbol> > nfa;
 
             explicit RegexParser(std::string pattern, bool insensitive = false)
                 : pattern(std::move(pattern)), pos(0), insensitive(insensitive),
-                  nfa(std::make_unique<NFA>()) {
+                  nfa(std::make_unique<NFA<Symbol> >()) {
             }
 
             char curr() const {

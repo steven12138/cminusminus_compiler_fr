@@ -15,6 +15,13 @@ else ()
     message(STATUS "magic_enum not found, use integer values for enums")
 endif ()
 
+option(ENABLE_TIMING "Enable timing of component initialization" OFF)
+if (ENABLE_TIMING)
+    add_compile_definitions(TIMING)
+    message(STATUS "Timing enabled")
+else ()
+    message(STATUS "Timing disabled")
+endif ()
 
 file(GLOB IR_SOURCES CONFIGURE_DEPENDS
         "${CMAKE_CURRENT_SOURCE_DIR}/external/compiler_ir/src/*.cpp")

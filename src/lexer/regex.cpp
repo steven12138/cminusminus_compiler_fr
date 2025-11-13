@@ -2,7 +2,10 @@
 
 
 namespace front::lexer {
-    std::unique_ptr<NFA> Regex::compile(int token, int priority) {
+    std::unique_ptr<NFA<Symbol> > Regex::compile(
+        const int token,
+        const int priority
+    ) const {
         auto parser = RegexParser(pattern, false);
 
         if (pattern[0] == '?' && pattern[1] == 'i' && pattern[2] == ':') {
