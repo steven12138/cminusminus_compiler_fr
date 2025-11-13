@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "token.h"
+#include "utils/util.h"
 
 
 namespace front::grammar {
@@ -48,8 +49,7 @@ namespace front::grammar {
         size_t operator()(const Symbol &sym) const noexcept {
             const size_t h1 = std::hash<int>()(static_cast<int>(sym.type));
             const size_t h2 = std::hash<std::string>()(sym.name);
-            // hash combine
-            return h1 ^ (h2 + 0x9e3779b97f4a7c15ull + (h1 << 6) + (h1 >> 2));
+            return hash_combine(h1, h2);
         }
     };
 

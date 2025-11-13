@@ -8,7 +8,8 @@ namespace front::grammar {
         compute_follow_set();
     }
 
-    Grammar::Grammar(const std::vector<RawProduction> &productions) {
+    Grammar::Grammar(std::string start,
+                     const std::vector<RawProduction> &productions) : start_symbol_(NT(std::move(start))) {
         for (const auto &prod: productions) {
             add_production(prod.first, prod.second);
         }
@@ -49,10 +50,10 @@ namespace front::grammar {
 
 
     void Grammar::add_production(const std::string &name, std::vector<Symbol> body) {
-        Production prod{productions_.size(), NT(name), std::move(body)};
+        Production prod{productions.size(), NT(name), std::move(body)};
 
         // register new production
-        productions_.push_back(prod);
+        productions.push_back(prod);
         production_map_[name].push_back(prod.id);
         non_terminals_.insert(name);
 
@@ -83,7 +84,7 @@ namespace front::grammar {
 
                 // For each production A → body
                 for (const auto &i: production_map_[nt]) {
-                    const auto &[_, name, body] = productions_[i];
+                    const auto &[_, name, body] = productions[i];
 
                     // Case: A → ε
                     if (body.empty()) {
@@ -101,13 +102,9 @@ namespace front::grammar {
 
                         // Add FIRST(Yi) \ {ε} to FIRST(A)
                         for (const auto &sym: first_Yi) {
-                            if (sym == Symbol::Epsilon()) continue;
-
-                            if (auto [it, inserted]
-                                        = first_set_[k].insert(sym);
-                                inserted) {
-                                changed = true;
-                            }
+                            if (sym.is_epsilon()) continue;
+                            auto [it, inserted] = first_set_[k].insert(sym);
+                            changed |= inserted;
                         }
 
                         // If Yi is not nullable, stop
@@ -119,10 +116,8 @@ namespace front::grammar {
 
                     // If all Yi can derive ε, then add ε to FIRST(A)
                     if (all_nullable) {
-                        if (!first_set_[k].contains(Symbol::Epsilon())) {
-                            first_set_[k].insert(Symbol::Epsilon());
-                            changed = true;
-                        }
+                        auto [it, inserted] = first_set_[k].insert(Symbol::Epsilon());
+                        changed |= inserted;
                     }
                 }
             }
@@ -131,5 +126,45 @@ namespace front::grammar {
 
 
     void Grammar::compute_follow_set() {
+        follow_set_[start_symbol_].insert(Symbol::End());
+        bool changed = true;
+        while (changed) {
+            changed = false;
+            for (const auto &[_,N,body]: productions) {
+                size_t n = body.size();
+                for (size_t i = 0; i < body.size(); i++) {
+                    const auto &B = body[i];
+                    if (B.is_terminal()) continue;
+
+                    bool all_nullable = true;
+                    // beta in body[i+1...n]
+                    for (size_t j = i + 1; j < n; j++) {
+                        const auto &Y = body[j];
+                        const auto &firstY = first_set_[Y];
+
+                        // follow(B) += FIRST(Y) \ {ε}
+                        for (const auto &sym: firstY) {
+                            if (sym.is_epsilon()) continue;
+                            auto [it, inserted] = follow_set_[B].insert(sym);
+                            changed |= inserted;
+                        }
+
+                        // if FIRST(Y) does not contain ε, stop
+                        if (!firstY.contains(Symbol::Epsilon())) {
+                            all_nullable = false;
+                            break;
+                        }
+                    }
+                    // if beta is nullable, follow(B) += follow(A)
+                    if (all_nullable) {
+                        const auto &followA = follow_set_[N];
+                        for (const auto &sym: followA) {
+                            auto [it, inserted] = follow_set_[B].insert(sym);
+                            changed |= inserted;
+                        }
+                    }
+                }
+            }
+        }
     }
 }

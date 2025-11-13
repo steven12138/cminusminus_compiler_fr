@@ -324,6 +324,9 @@ namespace front {
     }
 
 
+    // Explicit instantiation for lexer
+    // u -- Symbol --> v
+    // no additional value on states
     template class DFA<lexer::Symbol>;
 
     template std::ostream &operator<<<lexer::Symbol>(std::ostream &, const DFA<lexer::Symbol> &);

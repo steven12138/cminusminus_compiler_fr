@@ -3,6 +3,7 @@
 
 namespace front::grammar {
     void Grammar::init_rules() {
+        start_symbol_ = NT("ProgramPrime");
         // Augment grammar: Program' -> Program
         add_production("ProgramPrime", {NT("Program")});
 

@@ -35,4 +35,5 @@ foreach (TEST_SRC IN LISTS TEST_SOURCES)
     )
 
     add_test(NAME ${TARGET_NAME} COMMAND ${TARGET_NAME})
+    set_tests_properties(${TARGET_NAME} PROPERTIES LABELS "unit;test")
 endforeach ()

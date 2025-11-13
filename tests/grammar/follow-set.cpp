@@ -1,4 +1,5 @@
 #include <iostream>
+#include <sstream>
 
 #include "grammar/grammar.h"
 
@@ -27,6 +28,13 @@ int main() {
             {"F", {T("i")}}
         }
     };
-    g.print_first_set(std::cout);
-    return 0;
+    std::stringstream ss{};
+    g.print_follow_set(ss);
+    std::string ans =
+            "FOLLOW(F) = { +, \t*, \t), \t$ }\n"\
+            "FOLLOW(T) = { ), \t$, \t*, \t+ }\n"\
+            "FOLLOW(E) = { +, \t), \t$ }\n"\
+            "FOLLOW(S') = { $ }\n";
+
+    return ss.str() != ans;
 }

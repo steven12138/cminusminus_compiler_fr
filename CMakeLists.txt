@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(c_minus_frontend LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 26)
+set(CMAKE_CXX_STANDARD 23)
 
 # for vscode extensions
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)

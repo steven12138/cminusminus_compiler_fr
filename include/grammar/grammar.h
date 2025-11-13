@@ -29,13 +29,14 @@ namespace front::grammar {
     public:
         explicit Grammar();
 
+
         using RawProduction = std::pair<std::string, std::vector<Symbol> >;
 
-        explicit Grammar(const std::vector<RawProduction> &productions);
+        explicit Grammar(std::string start, const std::vector<RawProduction> &productions);
 
 
         friend std::ostream &operator <<(std::ostream &os, const Grammar &grammar) {
-            for (const auto &prod: grammar.productions_) {
+            for (const auto &prod: grammar.productions) {
                 os << prod << "\n";
             }
             return os;
@@ -47,6 +48,9 @@ namespace front::grammar {
 
         void print_follow_set(std::ostream &os) const;
 
+        std::vector<Production> productions;
+        std::unordered_map<std::string, std::vector<size_t> > production_map_;
+
     private:
         void add_production(const std::string &name, std::vector<Symbol> body);
 
@@ -54,10 +58,10 @@ namespace front::grammar {
 
         void compute_follow_set();
 
-        std::vector<Production> productions_;
-        std::unordered_map<std::string, std::vector<size_t> > production_map_;
         std::unordered_set<std::string> terminals_;
         std::unordered_set<std::string> non_terminals_;
+
+        Symbol start_symbol_;
 
         std::unordered_map<Symbol, std::unordered_set<Symbol, SymbolHasher>, SymbolHasher> first_set_;
         std::unordered_map<Symbol, std::unordered_set<Symbol, SymbolHasher>, SymbolHasher> follow_set_;
