@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <vector>
 #include <limits>
+#include <iterator>
 
 #include "nfa.h"
 
@@ -103,7 +104,8 @@ namespace front {
 
         std::vector<T> collect_alphabet();
 
-        std::vector<int> find_predecessors(const Group &group, T sym, const std::vector<std::vector<DFATrans<T>>> &rev) const;
+        std::vector<int> find_predecessors(const Group &group, T sym,
+                                           const std::vector<std::vector<DFATrans<T> > > &rev) const;
 
         using RevEdge = DFATrans<T>;
         using RevGraph = std::vector<std::vector<RevEdge> >;
