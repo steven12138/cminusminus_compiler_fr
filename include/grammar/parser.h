@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <memory>
 #include <ostream>
 
@@ -76,7 +77,7 @@ namespace front::grammar {
 
         static std::vector<Item> make_key(const ItemSetType &items) {
             std::vector key(items.begin(), items.end());
-            std::sort(key.begin(), key.end());
+            std::ranges::sort(key, std::less{});
             return key;
         }
 
