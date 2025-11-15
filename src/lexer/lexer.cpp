@@ -1,7 +1,9 @@
-#include "lexer/lexer.h"
+#include <exception>
 
-#include "../../include/utils/dfa.h"
+#include "lexer/lexer.h"
 #include "lexer/regex.h"
+
+#include "utils/dfa.h"
 #include "utils/timer.h"
 
 namespace front::lexer {

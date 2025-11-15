@@ -1,3 +1,5 @@
+#include <exception>
+
 #include "lexer/regex.h"
 
 
