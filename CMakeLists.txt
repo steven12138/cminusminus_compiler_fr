@@ -48,7 +48,11 @@ target_include_directories(
 
 target_link_libraries(compiler_frontend PRIVATE compiler_ir)
 
-target_compile_options(compiler_frontend PRIVATE -Wall -Wextra -Wpedantic)
+if (MSVC)
+    target_compile_options(compiler_frontend PRIVATE /W4 /permissive-)
+else ()
+    target_compile_options(compiler_frontend PRIVATE -Wall -Wextra -Wpedantic)
+endif ()
 
 option(BUILD_TESTS "Build test executables under tests/*/*.cpp" ON)
 if (BUILD_TESTS)

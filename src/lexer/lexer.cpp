@@ -1,4 +1,4 @@
-#include <exception>
+#include <stdexcept>
 
 #include "lexer/lexer.h"
 #include "lexer/regex.h"
