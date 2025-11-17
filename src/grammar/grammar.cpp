@@ -1,5 +1,8 @@
 #include "grammar/grammar.h"
 
+#include <algorithm>
+#include <iostream>
+
 
 namespace front::grammar {
     Grammar::Grammar() {
@@ -8,11 +11,13 @@ namespace front::grammar {
         compute_follow_set();
     }
 
-    Grammar::Grammar(std::string start,
-                     const std::vector<RawProduction> &productions) : start_symbol_(NT(std::move(start))) {
-        for (const auto &prod: productions) {
-            add_production(prod.first, prod.second);
+    Grammar::Grammar(const std::string &start,
+                     const std::vector<RawProduction> &productions, bool ll1) : start_symbol_(NT(start)) {
+        for (const auto &[name, body]: productions) {
+            add_production(name, std::move(body));
         }
+        if (ll1) normalize_ll1();
+
         compute_first_set();
         compute_follow_set();
     }
@@ -48,6 +53,11 @@ namespace front::grammar {
         }
     }
 
+    void Grammar::normalize_ll1() {
+        eliminate_left_recursion();
+        left_refactoring();
+    }
+
 
     void Grammar::add_production(const std::string &name, std::vector<Symbol> body) {
         Production prod{productions.size(), NT(name), std::move(body)};
@@ -66,6 +76,133 @@ namespace front::grammar {
             }
         }
     }
+
+    Symbol prime(const Symbol &sym) {
+        Symbol s = sym;
+        s.name += "'";
+        return s;
+    }
+
+    void Grammar::eliminate_left_recursion() {
+        // pi->pj Y => pi->d1 Y | d2 Y | ... | dm Y
+        // where pj->d1 | d2 | ... | dm is all productions of pj
+        int n = static_cast<int>(non_terminals_.size());
+        size_t cnt = productions.size();
+        std::vector ntv(non_terminals_.begin(), non_terminals_.end());
+        for (int i = 0; i < n; i++) {
+            const auto &pi = ntv[i];
+            for (int j = 0; j < i; j++) {
+                const auto &pj = ntv[j];
+                // all production pi->*
+                const auto prod_ids = production_map_[pi];
+                for (const auto &pid: prod_ids) {
+                    const auto &prod = productions[pid];
+                    if (prod.body.empty() || prod.body[0] != NT(pj) || prod.id == -1u) continue;
+                    // pi->pj Y
+                    // calculating d1...dm where pj->d1 | d2 | ... | dm
+                    const auto &pj_prod_ids = production_map_[pj];
+                    std::vector<std::vector<Symbol> > D;
+                    for (const auto &pj_pid: pj_prod_ids) {
+                        const auto &pj_prod = productions[pj_pid];
+                        if (pj_prod.id == -1u) continue;
+                        // di
+                        const auto &d = pj_prod.body;
+                        D.push_back(d);
+                    }
+
+                    // replace pi->pj Y with pi->d1 Y | d2 Y | ... | dm Y
+                    const auto &Y = std::vector<Symbol>(prod.body.begin() + 1, prod.body.end());
+                    for (const auto &d: D) {
+                        std::vector<Symbol> new_body;
+                        new_body.insert(new_body.end(), d.begin(), d.end());
+                        new_body.insert(new_body.end(), Y.begin(), Y.end());
+                        productions.push_back({cnt++, NT(pi), std::move(new_body)});
+                        production_map_[pi].push_back(cnt - 1);
+                    }
+
+                    // mark the old production as invalid
+                    productions[pid].id = -1u;
+                }
+            }
+            // eliminate direct left recursion of pi
+            const auto &pi_prime = prime(NT(pi));
+            // A->A alpha | beta  => A-> beta A' , A'-> alpha A' | ε
+            std::vector<Production> new_productions;
+            bool exist_left_recursion = false;
+            for (const auto &pid: production_map_[pi]) {
+                const auto &prod = productions[pid];
+                if (prod.id != -1u && !prod.body.empty() && prod.body[0] == NT(pi)) {
+                    exist_left_recursion = true;
+                    break;
+                }
+            }
+            if (!exist_left_recursion) continue;
+
+            for (const auto &pid: production_map_[pi]) {
+                if (productions[pid].id == -1u) continue;
+                const auto &prod = productions[pid];
+                // A->A alpha
+                if (!prod.body.empty() && prod.body[0] == NT(pi)) {
+                    // A'-> alpha A'
+                    std::vector alpha(prod.body.begin() + 1, prod.body.end());
+                    alpha.push_back(pi_prime);
+                    new_productions.push_back({cnt++, pi_prime, std::move(alpha)});
+                }
+                // beta
+                else {
+                    // A-> beta A'
+                    std::vector<Symbol> beta = prod.body;
+                    beta.push_back(pi_prime);
+                    new_productions.push_back({cnt++, NT(pi), std::move(beta)});
+                }
+                productions[pid].id = -1u;
+            }
+            // A'-> ε
+            new_productions.push_back({cnt++, pi_prime, {Epsilon()}});
+            for (auto &prod: new_productions) {
+                productions.push_back(std::move(prod));
+                production_map_[pi_prime.name].push_back(prod.id);
+            }
+            non_terminals_.insert(pi_prime.name);
+        }
+
+        // simplify unreachable productions
+        std::unordered_set<std::string> reachable;
+        reachable.insert(start_symbol_.name);
+        size_t size = 0;
+        while (size < reachable.size()) {
+            size = reachable.size();
+            for (const auto &prod: productions) {
+                if (prod.id == -1u) continue;
+                if (reachable.contains(prod.head.name)) {
+                    for (const auto &sym: prod.body) {
+                        if (sym.is_non_terminal()) {
+                            reachable.insert(sym.name);
+                        }
+                    }
+                }
+            }
+        }
+
+
+        // erase invalid productions
+        std::vector<Production> valid_productions;
+        std::unordered_map<std::string, std::vector<size_t> > new_production_map;
+        cnt = 0;
+        for (auto &prod: productions) {
+            if (prod.id != -1u && reachable.contains(prod.head.name)) {
+                prod.id = cnt++;
+                new_production_map[prod.head.name].push_back(prod.id);
+                valid_productions.push_back(std::move(prod));
+            }
+        }
+        productions = std::move(valid_productions);
+        production_map_ = std::move(new_production_map);
+    }
+
+    void Grammar::left_refactoring() {
+    }
+
 
     void Grammar::compute_first_set() {
         // 1. for terminals, FIRST(a) = {a}

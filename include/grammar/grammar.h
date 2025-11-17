@@ -30,13 +30,15 @@ namespace front::grammar {
         explicit Grammar();
 
 
-        using RawProduction = std::pair<std::string, std::vector<Symbol> >;
+        using RawProduction = std::pair<std::string, const std::vector<Symbol> &>;
 
-        explicit Grammar(std::string start, const std::vector<RawProduction> &productions);
+        // explicit Grammar(const std::string& start, const std::vector<RawProduction> &productions);
 
+        explicit Grammar(const std::string &start, const std::vector<RawProduction> &productions, bool ll1 = false);
 
         friend std::ostream &operator <<(std::ostream &os, const Grammar &grammar) {
             for (const auto &prod: grammar.productions) {
+                if (prod.id == -1u) continue;
                 os << prod << "\n";
             }
             return os;
@@ -48,11 +50,17 @@ namespace front::grammar {
 
         void print_follow_set(std::ostream &os) const;
 
+        void normalize_ll1();
+
         std::vector<Production> productions;
         std::unordered_map<std::string, std::vector<size_t> > production_map_;
 
     private:
         void add_production(const std::string &name, std::vector<Symbol> body);
+
+        void eliminate_left_recursion();
+
+        void left_refactoring();
 
         void compute_first_set();
 

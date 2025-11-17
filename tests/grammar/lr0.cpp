@@ -14,7 +14,7 @@ int main() {
     B -> cB | d
      */
     Grammar g{
-        "S'",
+        "S",
         {
             {"S", {NT("E")}},
             {"E", {T("a"), NT("A")}},
