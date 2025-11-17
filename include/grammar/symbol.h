@@ -32,20 +32,25 @@ namespace front::grammar {
         }
 
         static Symbol End() {
-            return Symbol{Type::End, "$"};
+            return Symbol{Type::Terminal, "$"};
         }
 
         bool is_terminal() const { return type == Type::Terminal; }
         bool is_non_terminal() const { return type == Type::NonTerminal; }
         bool is_epsilon() const { return type == Type::Epsilon; }
-        bool is_end() const { return type == Type::End; }
+        bool is_end() const { return name == "$"; }
 
         bool operator==(const Symbol &other) const {
             return type == other.type && name == other.name;
         }
+
+        friend std::ostream &operator<<(std::ostream &os, const Symbol &sym) {
+            os << sym.name;
+            return os;
+        }
     };
 
-    struct SymbolHasher {
+    struct SymbolHash {
         size_t operator()(const Symbol &sym) const noexcept {
             const size_t h1 = std::hash<int>()(static_cast<int>(sym.type));
             const size_t h2 = std::hash<std::string>()(sym.name);
@@ -63,5 +68,9 @@ namespace front::grammar {
 
     inline Symbol Epsilon() {
         return Symbol::Epsilon();
+    }
+
+    inline Symbol End() {
+        return Symbol::End();
     }
 }

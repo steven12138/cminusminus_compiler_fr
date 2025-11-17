@@ -1,7 +1,7 @@
 #include <iostream>
 
 #include "grammar/grammar.h"
-#include "grammar/parser.h"
+#include "grammar/parser_slr.h"
 
 using namespace front::grammar;
 

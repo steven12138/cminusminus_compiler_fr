@@ -2,19 +2,24 @@
 
 
 namespace front::grammar {
-    void Grammar::init_rules() {
-        start_symbol_ = NT("ProgramPrime");
-        // Augment grammar: Program' -> Program
-        add_production("ProgramPrime", {NT("Program")});
+    void Grammar::init_rules(bool ll1) {
+        if (!ll1) {
+            start_symbol_ = NT("ProgramPrime");
+            // Augment grammar: Program' -> Program
+            add_production("ProgramPrime", {NT("Program")});
+        } else {
+            start_symbol_ = NT("Program");
+        }
 
         // Program-> compUnit EOF
         add_production("Program", {NT("CompUnit"), Symbol::End()});
 
         // compUnit -> ( decl | funcDef)*
-        add_production("CompUnit", {});
+        add_production("CompUnit", {Epsilon()});
         add_production("CompUnit", {NT("CompUnitItem"), NT("CompUnit")});
         add_production("CompUnitItem", {NT("Decl")});
         add_production("CompUnitItem", {NT("FuncDef")});
+
 
         // decl -> constDecl | varDecl;
         add_production("Decl", {NT("ConstDecl")});
@@ -57,12 +62,13 @@ namespace front::grammar {
                            T("("), NT("FuncFParamsOpt"), T(")"),
                            NT("Block")
                        });
-        add_production("FuncFParamsOpt", {});
+        add_production("FuncFParamsOpt", {Epsilon()});
         add_production("FuncFParamsOpt", {NT("FuncFParams")});
 
-        // funcType -> 'void' | 'int' ;
+        // funcType -> 'void' | 'int' | 'float';
         add_production("FuncType", {T("void")});
-        add_production("FuncType", {T("int")});
+        add_production("FuncType", {T("func_int")});
+        add_production("FuncType", {T("func_float")});
 
         // funcFParams -> funcFParam (',' funcFParam)*;
         add_production("FuncFParams", {NT("FuncFParam")});
@@ -73,7 +79,7 @@ namespace front::grammar {
 
         // block -> '{' (blockItem)* '}';
         add_production("Block", {T("{"), NT("BlockItemList"), T("}")});
-        add_production("BlockItemList", {});
+        add_production("BlockItemList", {Epsilon()});
         add_production("BlockItemList", {NT("BlockItemList"), NT("BlockItem")});
 
         // blockItem -> decl | stmt;
@@ -93,9 +99,11 @@ namespace front::grammar {
                            T("if"), T("("), NT("Cond"), T(")"),
                            NT("Stmt"), NT("ElseOpt")
                        });
-        add_production("ElseOpt", {});
+        add_production("ElseOpt", {Epsilon()});
         add_production("ElseOpt", {T("else"), NT("Stmt")});
         add_production("Stmt", {T("return"), NT("ExpOpt"), T(";")});
+        add_production("ExpOpt", {Epsilon()});
+        add_production("ExpOpt", {NT("Exp")});
 
         // exp -> addExp;
         add_production("Exp", {NT("AddExp")});
@@ -126,7 +134,7 @@ namespace front::grammar {
                            T("("), NT("FuncRParamsOpt"), T(")")
                        });
         add_production("UnaryExp", {NT("UnaryOp"), NT("UnaryExp")});
-        add_production("FuncRParamsOpt", {});
+        add_production("FuncRParamsOpt", {Epsilon()});
         add_production("FuncRParamsOpt", {NT("FuncRParams")});
 
         // unaryOp -> '+' | '-' | '!';
@@ -188,5 +196,56 @@ namespace front::grammar {
         add_production("Ident", {T("Identifier")});
         // floatConst -> [0-9]+'.'[0-9]+
         add_production("FloatConst", {T("LiteralFloat")});
+
+        init_token_map();
+    }
+
+    void Grammar::init_token_map() {
+        // Keywords
+        token_to_terminal_[{TokenType::KwInt, TokenCategory::Keyword}] = T("int");
+        token_to_terminal_[{TokenType::KwVoid, TokenCategory::Keyword}] = T("void");
+        token_to_terminal_[{TokenType::KwReturn, TokenCategory::Keyword}] = T("return");
+        token_to_terminal_[{TokenType::KwMain, TokenCategory::Keyword}] = T("Ident");
+        token_to_terminal_[{TokenType::KwFloat, TokenCategory::Keyword}] = T("float");
+        token_to_terminal_[{TokenType::KwIf, TokenCategory::Keyword}] = T("if");
+        token_to_terminal_[{TokenType::KwElse, TokenCategory::Keyword}] = T("else");
+        token_to_terminal_[{TokenType::KwConst, TokenCategory::Keyword}] = T("const");
+
+        // Operators
+        token_to_terminal_[{TokenType::OpEqual, TokenCategory::Operator}] = T("==");
+        token_to_terminal_[{TokenType::OpLessEqual, TokenCategory::Operator}] = T("<=");
+        token_to_terminal_[{TokenType::OpGreaterEqual, TokenCategory::Operator}] = T(">=");
+        token_to_terminal_[{TokenType::OpNotEqual, TokenCategory::Operator}] = T("!=");
+        token_to_terminal_[{TokenType::OpAnd, TokenCategory::Operator}] = T("&&");
+        token_to_terminal_[{TokenType::OpOr, TokenCategory::Operator}] = T("||");
+        token_to_terminal_[{TokenType::OpPlus, TokenCategory::Operator}] = T("+");
+        token_to_terminal_[{TokenType::OpMinus, TokenCategory::Operator}] = T("-");
+        token_to_terminal_[{TokenType::OpMultiply, TokenCategory::Operator}] = T("*");
+        token_to_terminal_[{TokenType::OpDivide, TokenCategory::Operator}] = T("/");
+        token_to_terminal_[{TokenType::OpMod, TokenCategory::Operator}] = T("%");
+        token_to_terminal_[{TokenType::OpAssign, TokenCategory::Operator}] = T("=");
+        token_to_terminal_[{TokenType::OpGreater, TokenCategory::Operator}] = T(">");
+        token_to_terminal_[{TokenType::OpLess, TokenCategory::Operator}] = T("<");
+
+        // Separators
+        token_to_terminal_[{TokenType::SepLParen, TokenCategory::Separators}] = T("(");
+        token_to_terminal_[{TokenType::SepRParen, TokenCategory::Separators}] = T(")");
+        token_to_terminal_[{TokenType::SepLBrace, TokenCategory::Separators}] = T("{");
+        token_to_terminal_[{TokenType::SepRBrace, TokenCategory::Separators}] = T("}");
+        token_to_terminal_[{TokenType::SepComma, TokenCategory::Separators}] = T(",");
+        token_to_terminal_[{TokenType::SepSemicolon, TokenCategory::Separators}] = T(";");
+
+        // Literals
+        token_to_terminal_[{TokenType::LiteralInt, TokenCategory::IntLiteral}] = T("LiteralInt");
+        token_to_terminal_[{TokenType::LiteralFloat, TokenCategory::FloatLiteral}] = T("LiteralFloat");
+
+        // Identifier
+        token_to_terminal_[{TokenType::Identifier, TokenCategory::Identifier}] = T("Ident");
+        // End of File
+        token_to_terminal_[{TokenType::EndOfFile, TokenCategory::End}] = Symbol::End();
+
+        // Func Decl
+        token_to_terminal_[{TokenType::KwIntFunc, TokenCategory::FuncDef}] = T("func_int");
+        token_to_terminal_[{TokenType::KwFloatFunc, TokenCategory::FuncDef}] = T("func_float");
     }
 }

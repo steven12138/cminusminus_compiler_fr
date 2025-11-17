@@ -25,8 +25,7 @@ namespace front::lexer {
     Lexer::Lexer() : Lexer("") {
     }
 
-
-    const std::vector<Token> &Lexer::tokenize() {
+    std::vector<Token> &Lexer::tokenize() {
         if (source_.empty()) throw std::runtime_error("Lexer::tokenize() source is empty");
         if (!tokens.empty()) return tokens;
         if (dfa->start_state() == -1)
@@ -78,13 +77,14 @@ namespace front::lexer {
         return tokens;
     }
 
-    const std::vector<Token> &Lexer::tokenize(const std::string &source) {
+    std::vector<Token> &Lexer::tokenize(const std::string &source) {
         source_ = source;
         tokens.clear();
         row = 1;
         column = 1;
         return tokenize();
     }
+
 
     void Lexer::optimize() {
         if (tokens.empty()) return;
@@ -96,6 +96,7 @@ namespace front::lexer {
             }
         }
         tokens = std::move(optimized_tokens);
+        tokens.push_back({TokenType::EndOfFile, TokenCategory::End, {row, column}, "$"});
     }
 
 
@@ -133,12 +134,12 @@ namespace front::lexer {
             {"<", TokenType::OpLess, TokenCategory::Operator},
 
             // Separators
-            {"\\(", TokenType::SeLParen, TokenCategory::Separators},
-            {"\\)", TokenType::SeRParen, TokenCategory::Separators},
-            {"\\{", TokenType::SeLBrace, TokenCategory::Separators},
-            {"\\}", TokenType::SeRBrace, TokenCategory::Separators},
-            {",", TokenType::SeComma, TokenCategory::Separators},
-            {";", TokenType::SeSemicolon, TokenCategory::Separators},
+            {"\\(", TokenType::SepLParen, TokenCategory::Separators},
+            {"\\)", TokenType::SepRParen, TokenCategory::Separators},
+            {"\\{", TokenType::SepLBrace, TokenCategory::Separators},
+            {"\\}", TokenType::SepRBrace, TokenCategory::Separators},
+            {",", TokenType::SepComma, TokenCategory::Separators},
+            {";", TokenType::SepSemicolon, TokenCategory::Separators},
 
             // Others
             {RULE_FLOAT, TokenType::LiteralFloat, TokenCategory::FloatLiteral},

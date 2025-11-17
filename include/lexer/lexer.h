@@ -21,9 +21,10 @@ namespace front::lexer {
 
         explicit Lexer();
 
-        const std::vector<Token> &tokenize();
+        std::vector<Token> &tokenize();
 
-        const std::vector<Token> &tokenize(const std::string &source);
+        std::vector<Token> &tokenize(const std::string &source);
+
 
         void optimize();
 

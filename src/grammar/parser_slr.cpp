@@ -1,4 +1,4 @@
-#include "grammar/parser.h"
+#include "grammar/parser_slr.h"
 
 #include <algorithm>
 #include <iostream>
@@ -30,7 +30,7 @@ namespace front::grammar {
     }
 
 
-    void SLRParser::closure(std::unordered_set<Item, ItemHasher> &I) {
+    void SLRParser::closure(std::unordered_set<Item, ItemHash> &I) {
         std::queue<Item> q;
         for (const auto &it: I) q.push(it);
 
@@ -41,8 +41,8 @@ namespace front::grammar {
             const auto &sym = item.dot();
             if (!sym.is_non_terminal()) continue;
 
-            auto it = grammar_.production_map_.find(sym.name);
-            if (it == grammar_.production_map_.end()) continue;
+            auto it = grammar_.production_map.find(sym.name);
+            if (it == grammar_.production_map.end()) continue;
 
             for (auto prod_id: it->second) {
                 const auto &prod = grammar_.productions[prod_id];
@@ -73,7 +73,7 @@ namespace front::grammar {
             workList.pop();
             const auto &curr_set = item_sets_[I_id].items;
 
-            std::unordered_map<Symbol, ItemSetType, SymbolHasher> symbol_groups;
+            std::unordered_map<Symbol, ItemSetType, SymbolHash> symbol_groups;
 
             // for each item [A -> α.Xβ] in I, group by X
             // insert A -> αX.β , collect in symbol_groups

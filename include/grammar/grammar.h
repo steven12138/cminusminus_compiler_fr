@@ -27,7 +27,7 @@ namespace front::grammar {
 
     class Grammar {
     public:
-        explicit Grammar();
+        explicit Grammar(bool ll1 = false);
 
 
         using RawProduction = std::pair<std::string, const std::vector<Symbol> &>;
@@ -44,7 +44,9 @@ namespace front::grammar {
             return os;
         }
 
-        void init_rules();
+        void init_rules(bool ll1 = false);
+
+        void init_token_map();
 
         void print_first_set(std::ostream &os) const;
 
@@ -52,26 +54,37 @@ namespace front::grammar {
 
         void normalize_ll1();
 
+        std::unordered_set<Symbol, SymbolHash> first_of_sequence(const std::vector<Symbol> &body) const;
+
+        bool has_back_tracing(std::ostream &os);
+
         std::vector<Production> productions;
-        std::unordered_map<std::string, std::vector<size_t> > production_map_;
+        std::unordered_map<std::string, std::vector<size_t> > production_map;
+
+        std::unordered_set<std::string> terminals_;
+        std::unordered_set<std::string> non_terminals;
+
+        Symbol start_symbol_;
+        bool ll1{false};
+
+        std::unordered_map<Symbol, std::unordered_set<Symbol, SymbolHash>, SymbolHash> first_set_;
+        std::unordered_map<Symbol, std::unordered_set<Symbol, SymbolHash>, SymbolHash> follow_set_;
+
+        std::unordered_map<Token, Symbol, TokenHash> token_to_terminal_;
 
     private:
         void add_production(const std::string &name, std::vector<Symbol> body);
 
+        Symbol prime(const Symbol &sym) const;
+
         void eliminate_left_recursion();
+
+        void eliminate_back_tracing();
 
         void left_refactoring();
 
         void compute_first_set();
 
         void compute_follow_set();
-
-        std::unordered_set<std::string> terminals_;
-        std::unordered_set<std::string> non_terminals_;
-
-        Symbol start_symbol_;
-
-        std::unordered_map<Symbol, std::unordered_set<Symbol, SymbolHasher>, SymbolHasher> first_set_;
-        std::unordered_map<Symbol, std::unordered_set<Symbol, SymbolHasher>, SymbolHasher> follow_set_;
     };
 }

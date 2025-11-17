@@ -1,6 +1,8 @@
 #pragma once
 #include <string>
 #include <ostream>
+
+#include "utils/util.h"
 #ifdef USE_MAGIC_ENUM
 #include <magic_enum/magic_enum.hpp>
 #endif
@@ -13,7 +15,7 @@ namespace front {
     };
 
     enum class TokenCategory {
-        Keyword, Operator, Separators, Identifier, IntLiteral, FloatLiteral, End, Invalid,
+        Keyword, Operator, Separators, Identifier, IntLiteral, FloatLiteral, End, Invalid, FuncDef,
         Spacer,
     };
 
@@ -23,7 +25,7 @@ namespace front {
         OpEqual, OpLessEqual, OpGreaterEqual, OpNotEqual, OpAnd, OpOr,
         OpPlus, OpMinus, OpMultiply, OpDivide, OpMod, OpAssign, OpGreater, OpLess,
 
-        SeLParen, SeRParen, SeLBrace, SeRBrace, SeComma, SeSemicolon,
+        SepLParen, SepRParen, SepLBrace, SepRBrace, SepComma, SepSemicolon,
 
         LiteralInt, LiteralFloat,
 
@@ -31,6 +33,8 @@ namespace front {
         EndOfFile,
         Invalid,
         Spacer,
+        KwIntFunc,
+        KwFloatFunc,
     };
 
 
@@ -39,6 +43,19 @@ namespace front {
         TokenCategory category{TokenCategory::Invalid};
         Location loc{};
         std::string lexeme{};
+
+        Token() = default;
+
+        Token(const TokenType type, const TokenCategory category, const Location loc, std::string lexeme)
+            : type(type), category(category), loc(loc), lexeme(std::move(lexeme)) {
+        }
+
+        Token(TokenType type, TokenCategory category) : type(type), category(category) {
+        }
+
+        bool operator==(const Token &other) const {
+            return type == other.type && category == other.category;
+        }
 
         friend std::ostream &operator<<(std::ostream &os, const Token &token) {
 #ifdef USE_MAGIC_ENUM
@@ -52,6 +69,14 @@ namespace front {
 #endif
 
             return os;
+        }
+    };
+
+    struct TokenHash {
+        size_t operator()(const Token &token) const {
+            const auto h1 = std::hash<int>()(static_cast<int>(token.type));
+            const auto h2 = std::hash<int>()(static_cast<int>(token.category));
+            return hash_combine(h1, h2);
         }
     };
 }
