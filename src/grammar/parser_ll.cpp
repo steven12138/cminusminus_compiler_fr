@@ -100,7 +100,7 @@ namespace front::grammar {
         return result;
     }
 
-    std::vector<Token> LL1Parser::preprocess_tokens(const std::vector<Token> &tokens) const {
+    std::vector<Token> LL1Parser::preprocess_tokens(const std::vector<Token> &tokens) {
         std::vector<Token> adjusted = tokens;
         int brace_depth = 0;
         for (std::size_t i = 0; i < adjusted.size(); ++i) {

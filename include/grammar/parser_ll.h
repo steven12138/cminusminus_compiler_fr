@@ -17,12 +17,13 @@ namespace front::grammar {
 
         std::vector<ParseStep> parse(const std::vector<Token> &tokens) const;
 
-        std::vector<Token> preprocess_tokens(const std::vector<Token> &tokens) const;
+        static std::vector<Token> preprocess_tokens(const std::vector<Token> &tokens);
 
         Grammar grammar_{true};
 
     private:
         void compute_action_table();
+
         void handle_dangling_else();
 
         using ActionHash = PairHash<Symbol, Symbol, SymbolHash, SymbolHash>;
