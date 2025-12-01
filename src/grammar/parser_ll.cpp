@@ -125,6 +125,7 @@ namespace front::grammar {
         return adjusted;
     }
 
+
     void LL1Parser::compute_action_table() {
         // For each production A -> alpha
         // a in FIRST(alpha) and a is not EPS, M[A, a] = A -> alpha

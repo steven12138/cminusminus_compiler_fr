@@ -3,6 +3,11 @@
 #include <memory>
 #include <ostream>
 
+#ifdef USE_MAGIC_ENUM
+#include <magic_enum/magic_enum.hpp>
+#endif
+
+
 #include "grammar.h"
 #include "utils/nfa.h"
 #include "utils/util.h"
@@ -38,20 +43,56 @@ namespace front::grammar {
             os << item.prod->head.name << " -> ";
             const int n = static_cast<int>(item.prod->body.size());
             for (int i = 0; i < n; i++) {
-                if (i == item.dot_pos) os << "* ";
+                if (i == item.dot_pos) os << "· ";
                 os << item.prod->body[i].name << " ";
             }
             return os;
         }
-    };
 
-    struct ItemHash {
-        size_t operator()(const Item &item) const {
-            const size_t pid = std::hash<size_t>()(item.prod->id);
-            const size_t dh = std::hash<int>()(item.dot_pos);
-            return hash_combine(pid, dh);
+        bool is_complete() const {
+            return dot_pos >= static_cast<int>(prod->body.size());
         }
     };
+
+
+    struct SLRAction {
+        enum class ActionType {
+            Shift, Reduce, Accept, Error
+        };
+
+        ActionType type;
+        int target = -1; // state id for Shift, production id for Reduce
+        SLRAction(ActionType type, int target) : type(type), target(target) {
+        }
+
+        static SLRAction shift(int i) {
+            return {ActionType::Shift, i};
+        }
+
+        static SLRAction reduce(int i) {
+            return {ActionType::Reduce, i};
+        }
+
+        static SLRAction accept() {
+            return {ActionType::Accept, -1};
+        }
+
+        static SLRAction error() {
+            return {ActionType::Error, -1};
+        }
+
+        friend std::ostream &operator<<(std::ostream &os, const SLRAction &obj) {
+#ifdef USE_MAGIC_ENUM
+            return os << "type: " << magic_enum::enum_name(obj.type)
+                   << " target: " << obj.target;
+#else
+            return os
+                   << "type: " << (int) obj.type
+                   << " target: " << obj.target;
+#endif
+        }
+    };
+
 
     class SLRParser {
     public:
@@ -59,9 +100,23 @@ namespace front::grammar {
 
 
         void print_item_sets(std::ostream &os) const;
+
         void print_go_function(std::ostream &os) const;
 
+        void print_action_table(std::ostream &os) const;
+
+        void print_goto_table(std::ostream &os) const;
+
     private:
+        struct ItemHash {
+            size_t operator()(const Item &item) const {
+                const size_t pid = std::hash<size_t>()(item.prod->id);
+                const size_t dh = std::hash<int>()(item.dot_pos);
+                return hash_combine(pid, dh);
+            }
+        };
+
+
         using ItemSetType = std::unordered_set<Item, ItemHash>;
 
         struct ItemSet {
@@ -73,6 +128,8 @@ namespace front::grammar {
         void closure(std::unordered_set<Item, ItemHash> &closure);
 
         void init_item_set();
+
+        void calc_action_goto_tables();
 
         static std::vector<Item> make_key(const ItemSetType &items) {
             std::vector key(items.begin(), items.end());
@@ -108,6 +165,10 @@ namespace front::grammar {
             }
         };
 
+
         std::unordered_map<std::pair<int, Symbol>, int, GoFuncHash> go_func_;
+
+        std::unordered_map<std::pair<int, Symbol>, SLRAction, GoFuncHash> action_table_;
+        std::unordered_map<std::pair<int, Symbol>, int, GoFuncHash> goto_table_;
     };
 }

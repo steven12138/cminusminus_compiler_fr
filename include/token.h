@@ -79,4 +79,30 @@ namespace front {
             return hash_combine(h1, h2);
         }
     };
+
+
+    inline std::vector<Token> post_process(const std::vector<Token> &tokens) {
+        std::vector<Token> adjusted = tokens;
+        int brace_depth = 0;
+        for (std::size_t i = 0; i < adjusted.size(); ++i) {
+            const auto type = adjusted[i].type;
+            if (type == TokenType::SepLBrace) {
+                ++brace_depth;
+            } else if (type == TokenType::SepRBrace) {
+                brace_depth = std::max(0, brace_depth - 1);
+            }
+            if (brace_depth == 0 &&
+                (type == TokenType::KwInt || type == TokenType::KwFloat) &&
+                i + 2 < adjusted.size() && (adjusted[i + 1].type == TokenType::Identifier ||
+                                            adjusted[i + 1].type == TokenType::KwMain) &&
+                adjusted[i + 2].type == TokenType::SepLParen) {
+                adjusted[i].category = TokenCategory::FuncDef;
+                adjusted[i].type =
+                        (type == TokenType::KwInt)
+                            ? TokenType::KwIntFunc
+                            : TokenType::KwFloatFunc;
+            }
+        }
+        return adjusted;
+    }
 }
