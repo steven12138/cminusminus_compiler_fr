@@ -106,12 +106,12 @@ namespace front::grammar {
         add_production("ExpOpt", {NT("Exp")});
 
         // exp -> addExp;
-        // add_production("Exp", {NT("AddExp")});
-        add_production("Exp", {NT("LOrExp")});
+        add_production("Exp", {NT("AddExp")});
+        // add_production("Exp", {NT("LOrExp")});
 
         // cond -> lOrExp;
-        // add_production("Cond", {NT("LOrExp")}); 
-        add_production("Cond", {NT("Exp")});
+        add_production("Cond", {NT("LOrExp")});
+        // add_production("Cond", {NT("Exp")});
 
         // lVal -> Ident;
         add_production("LVal", {T("Ident")});

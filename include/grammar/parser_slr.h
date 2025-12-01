@@ -99,6 +99,7 @@ namespace front::grammar {
         explicit SLRParser(Grammar grammar);
 
 
+
         void print_item_sets(std::ostream &os) const;
 
         void print_go_function(std::ostream &os) const;

@@ -1,16 +1,22 @@
 #pragma once
-#include "symbol.h"
 #include <ostream>
 #include <unordered_map>
 #include <unordered_set>
-#include <utility>
+#include <functional>
+#include <span>
 
+#include "ast/ast.h"
+#include "symbol.h"
 
 namespace front::grammar {
+    using ActionFn = std::function<ast::SemVal(std::span<ast::SemVal>)>;
+
     struct Production {
         size_t id;
         Symbol head;
         std::vector<Symbol> body;
+        bool visible{true};
+        ActionFn action{nullptr};
 
         friend std::ostream &operator <<(std::ostream &os, const Production &prod) {
             os << prod.head.name << " -> ";
@@ -32,7 +38,6 @@ namespace front::grammar {
 
         using RawProduction = std::pair<std::string, const std::vector<Symbol> &>;
 
-        // explicit Grammar(const std::string& start, const std::vector<RawProduction> &productions);
 
         explicit Grammar(const std::string &start, const std::vector<RawProduction> &productions, bool ll1 = false);
 
@@ -73,7 +78,8 @@ namespace front::grammar {
         std::unordered_map<Token, Symbol, TokenHash> token_to_terminal_;
 
     private:
-        void add_production(const std::string &name, std::vector<Symbol> body);
+        void add_production(const std::string &name, std::vector<Symbol> body,
+                            ActionFn action = nullptr, bool visible = true);
 
         Symbol prime(const Symbol &sym) const;
 

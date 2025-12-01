@@ -224,8 +224,9 @@ namespace front::grammar {
     }
 
 
-    void Grammar::add_production(const std::string &name, std::vector<Symbol> body) {
-        Production prod{productions.size(), NT(name), std::move(body)};
+    void Grammar::add_production(const std::string &name, std::vector<Symbol> body,
+                                ActionFn action, bool visible) {
+        Production prod{productions.size(), NT(name), std::move(body), visible, std::move(action)};
         if (prod.body.empty()) {
             std::cerr << "Empty production\n" << prod << std::endl;
             throw std::runtime_error("Must use Epsilon() to represent empty production body.");
@@ -542,7 +543,7 @@ namespace front::grammar {
 
                 // For each production A → body
                 for (const auto &i: production_map[nt]) {
-                    const auto &[_, name, body] = productions[i];
+                    const auto &body = productions[i].body;
 
                     // Case: A → ε
                     if (body.size() == 1 && body[0].is_epsilon()) {
@@ -589,7 +590,9 @@ namespace front::grammar {
         bool changed = true;
         while (changed) {
             changed = false;
-            for (const auto &[_,N,body]: productions) {
+            for (const auto &prod: productions) {
+                const auto &N = prod.head;
+                const auto &body = prod.body;
                 size_t n = body.size();
                 for (size_t i = 0; i < body.size(); i++) {
                     const auto &B = body[i];

@@ -4,8 +4,9 @@
 #include <iostream>
 #include <queue>
 
-#include "grammar/grammar.h"
 
+#include "grammar/grammar.h"
+#include "ast/ast.h"
 
 namespace front::grammar {
     SLRParser::SLRParser(Grammar grammar) : grammar_(std::move(grammar)) {
