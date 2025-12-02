@@ -7,7 +7,7 @@
 
 
 namespace front::grammar {
-    constexpr std::string EPS{"epsilon"};
+    const std::string EPS{"epsilon"};
 
 
     struct Symbol {
