@@ -4,6 +4,7 @@
 #include <unordered_set>
 #include <functional>
 #include <span>
+#include <optional> 
 
 #include "ast/ast.h"
 #include "symbol.h"
