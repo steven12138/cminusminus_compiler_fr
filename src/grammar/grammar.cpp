@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <iostream>
 #include <ranges>
+#include <utility>
 
 
 namespace front::grammar {
@@ -225,8 +226,11 @@ namespace front::grammar {
 
 
     void Grammar::add_production(const std::string &name, std::vector<Symbol> body,
-                                ActionFn action, bool visible) {
-        Production prod{productions.size(), NT(name), std::move(body), visible, std::move(action)};
+                                 ActionFn action, TraceInfo trace) {
+        const Production prod{
+            productions.size(), NT(name), std::move(body),
+            std::move(trace), std::move(action)
+        };
         if (prod.body.empty()) {
             std::cerr << "Empty production\n" << prod << std::endl;
             throw std::runtime_error("Must use Epsilon() to represent empty production body.");

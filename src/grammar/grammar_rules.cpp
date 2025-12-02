@@ -12,7 +12,8 @@ namespace front::grammar {
         }
 
         // Program-> compUnit EOF
-        add_production("Program", {NT("CompUnit"), Symbol::End()});
+        add_production("Program", {NT("CompUnit"), Symbol::End()},
+                       nullptr, {{"Progrom", "EOF"}});
 
         // compUnit -> ( decl | funcDef)*
         add_production("CompUnit", {Epsilon()});
@@ -22,13 +23,15 @@ namespace front::grammar {
 
 
         // decl -> constDecl | varDecl;
-        add_production("Decl", {NT("ConstDecl")});
-        add_production("Decl", {NT("VarDecl")});
+        add_production("Decl", {NT("ConstDecl")},
+                       nullptr, {{"decl", "constDecl"}});
+        add_production("Decl", {NT("VarDecl")},
+                       nullptr, {{"decl", "varDecl"}});
 
         // constDecl -> 'const' bType constDef (',' constDef)* ';';
         add_production("ConstDecl", {
                            T("const"), NT("BType"), NT("ConstDefList"), T(";")
-                       });
+                       }, nullptr, {{"constDecl", "SE_SEMICOLON"}});
         add_production("ConstDefList", {NT("ConstDef")});
         add_production("ConstDefList", {
                            NT("ConstDefList"), T(","), NT("ConstDef")
@@ -39,29 +42,35 @@ namespace front::grammar {
         add_production("BType", {T("float")});
 
         // constDef -> Ident '=' constInitVal;
-        add_production("ConstDef", {T("Ident"), T("="), NT("ConstInitVal")});
+        add_production("ConstDef", {T("Ident"), T("="), NT("ConstInitVal")},
+                       nullptr, {{"constDef", "ConstInitVal"}});
 
         //  constInitVal -> constExp
-        add_production("ConstInitVal", {NT("ConstExp")});
+        add_production("ConstInitVal", {NT("ConstExp")},
+                       nullptr, {{"constInitVal", "constExp"}});
 
         // varDecl -> bType varDef (',' varDef)* ';';
-        add_production("VarDecl", {NT("BType"), NT("VarDefList"), T(";")});
+        add_production("VarDecl", {NT("BType"), NT("VarDefList"), T(";")},
+                       nullptr, {{"varDecl", ";"}});
         add_production("VarDefList", {NT("VarDef")});
         add_production("VarDefList", {NT("VarDefList"), T(","), NT("VarDef")});
 
         // varDef -> Ident | Ident '=' initVal ;
-        add_production("VarDef", {T("Ident")});
-        add_production("VarDef", {T("Ident"), T("="), NT("InitVal")});
+        add_production("VarDef", {T("Ident")},
+                       nullptr, {{"varDef", "Ident"}});
+        add_production("VarDef", {T("Ident"), T("="), NT("InitVal")},
+                       nullptr, {{"varDef", "initVal"}});
 
         // initVal -> exp;
-        add_production("InitVal", {NT("Exp")});
+        add_production("InitVal", {NT("Exp")},
+                       nullptr, {{"initVal", "exp"}});
 
         // funcDef -> funcType Ident '(' (funcFParams)? ')' block;
         add_production("FuncDef", {
                            NT("FuncType"), T("Ident"),
                            T("("), NT("FuncFParamsOpt"), T(")"),
                            NT("Block")
-                       });
+                       }, nullptr, {{"funcDef", "block"}});
         add_production("FuncFParamsOpt", {Epsilon()});
         add_production("FuncFParamsOpt", {NT("FuncFParams")});
 
@@ -78,22 +87,28 @@ namespace front::grammar {
         add_production("FuncFParam", {NT("BType"), T("Ident")});
 
         // block -> '{' (blockItem)* '}';
-        add_production("Block", {T("{"), NT("BlockItemList"), T("}")});
+        add_production("Block", {T("{"), NT("BlockItemList"), T("}")},
+                       nullptr, {{"block", "}"}});
         add_production("BlockItemList", {Epsilon()});
         add_production("BlockItemList", {NT("BlockItemList"), NT("BlockItem")});
 
         // blockItem -> decl | stmt;
-        add_production("BlockItem", {NT("Decl")});
-        add_production("BlockItem", {NT("Stmt")});
+        add_production("BlockItem", {NT("Decl")},
+                       nullptr, {{"blockItem", "decl"}});
+        add_production("BlockItem", {NT("Stmt")},
+                       nullptr, {{"blockItem", "stmt"}});
 
         // stmt ->lVal '=' exp ';'
         //   | (exp)? ';'
         //   | block
         //   | 'if' '(' cond ')' stmt ('else' stmt)?
         //   | 'return' (exp)? ';';
-        add_production("Stmt", {NT("LVal"), T("="), NT("Exp"), T(";")});
-        add_production("Stmt", {NT("ExpOpt"), T(";")});
-        add_production("Stmt", {NT("Block")});
+        add_production("Stmt", {NT("LVal"), T("="), NT("Exp"), T(";")},
+                       nullptr, {{"stmt", ";"}});
+        add_production("Stmt", {NT("ExpOpt"), T(";")},
+                       nullptr, {{"stmt", ";"}});
+        add_production("Stmt", {NT("Block")},
+                       nullptr, {{"stmt", "block"}});
         add_production("Stmt",
                        {
                            T("if"), T("("), NT("Cond"), T(")"),
@@ -190,7 +205,8 @@ namespace front::grammar {
         add_production("LOrExp", {NT("LOrExp"), T("||"), NT("LAndExp")});
 
         // constExp -> addExp;
-        add_production("ConstExp", {NT("AddExp")});
+        add_production("ConstExp", {NT("AddExp")},
+                       nullptr, {{"constExp", "addExp"}});
 
         // IntConst -> [0-9]+ ;
         add_production("IntConst", {T("LiteralInt")});

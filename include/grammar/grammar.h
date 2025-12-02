@@ -11,11 +11,13 @@
 namespace front::grammar {
     using ActionFn = std::function<ast::SemVal(std::span<ast::SemVal>)>;
 
+    using TraceInfo = std::optional<std::pair<std::string, std::string> >;
+
     struct Production {
         size_t id;
         Symbol head;
         std::vector<Symbol> body;
-        bool visible{true};
+        TraceInfo trace{std::nullopt};
         ActionFn action{nullptr};
 
         friend std::ostream &operator <<(std::ostream &os, const Production &prod) {
@@ -79,7 +81,8 @@ namespace front::grammar {
 
     private:
         void add_production(const std::string &name, std::vector<Symbol> body,
-                            ActionFn action = nullptr, bool visible = true);
+                            ActionFn action = nullptr,
+                            TraceInfo trace = std::nullopt);
 
         Symbol prime(const Symbol &sym) const;
 
