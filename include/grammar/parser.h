@@ -21,6 +21,6 @@ namespace front::grammar {
     struct ParseResult {
         ast::ProgramPtr program;
         std::vector<ParseStep> actions;
-        bool is_error = false;
+        bool success = false;
     };
 }

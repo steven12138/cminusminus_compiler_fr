@@ -9,7 +9,9 @@ using namespace front;
 
 int main() {
     const std::string source = R"(
-int a=0;
+int main(){
+
+}
 )";
 
     // 1. 词法分析
@@ -18,6 +20,10 @@ int a=0;
 
     // 关键一步：对 token 进行后处理，把函数定义里的 int/float 识别成 func_int/func_float
     auto tokens = post_process(raw_tokens);
+
+    for (const auto &t: tokens) {
+        std::cout << t << std::endl;
+    }
 
     // 2. 构造文法和 SLR 解析器
     grammar::Grammar grammar{};

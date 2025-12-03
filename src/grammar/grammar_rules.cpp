@@ -3,23 +3,19 @@
 
 namespace front::grammar {
     void Grammar::init_rules(bool ll1) {
-        if (!ll1) {
-            start_symbol_ = NT("ProgramPrime");
-            // Augment grammar: Program' -> Program
-            add_production("ProgramPrime", {NT("Program")});
-        } else {
-            start_symbol_ = NT("Program");
-        }
+        start_symbol_ = NT("Program");
 
         // Program-> compUnit EOF
         add_production("Program", {NT("CompUnit")},
                        nullptr, {{"Progrom", "EOF"}});
 
         // compUnit -> ( decl | funcDef)*
-        add_production("CompUnit", {Symbol::End()});
-        add_production("CompUnit", {NT("CompUnitItem"), NT("CompUnit"), Symbol::End()});
-        add_production("CompUnitItem", {NT("Decl"), Symbol::End()});
-        add_production("CompUnitItem", {NT("FuncDef"), Symbol::End()});
+        add_production("CompUnit", {Epsilon()});
+        add_production("CompUnit", {NT("CompUnitList")});
+        add_production("CompUnitList", {NT("CompUnitItem")});
+        add_production("CompUnitList", {NT("CompUnitList"), NT("CompUnitItem")});
+        add_production("CompUnitItem", {NT("Decl")});
+        add_production("CompUnitItem", {NT("FuncDef")});
 
 
         // decl -> constDecl | varDecl;
@@ -38,8 +34,10 @@ namespace front::grammar {
                        });
 
         // bType -> 'int' | 'float';
-        add_production("BType", {T("int")});
-        add_production("BType", {T("float")});
+        add_production("BType", {T("int")},
+                       nullptr, {{"bType", "int"}});
+        add_production("BType", {T("float")},
+                       nullptr, {{"bType", "float"}});
 
         // constDef -> Ident '=' constInitVal;
         add_production("ConstDef", {T("Ident"), T("="), NT("ConstInitVal")},
@@ -68,11 +66,14 @@ namespace front::grammar {
         // funcDef -> funcType Ident '(' (funcFParams)? ')' block;
         add_production("FuncDef", {
                            NT("FuncType"), T("Ident"),
-                           T("("), NT("FuncFParamsOpt"), T(")"),
+                           T("("), T(")"),
                            NT("Block")
                        }, nullptr, {{"funcDef", "block"}});
-        add_production("FuncFParamsOpt", {Epsilon()});
-        add_production("FuncFParamsOpt", {NT("FuncFParams")});
+        add_production("FuncDef", {
+                           NT("FuncType"), T("Ident"),
+                           T("("), NT("FuncFParams"), T(")"),
+                           NT("Block")
+                       }, nullptr, {{"funcDef", "block"}});
 
         // funcType -> 'void' | 'int' | 'float';
         add_production("FuncType", {T("void")});
@@ -87,9 +88,11 @@ namespace front::grammar {
         add_production("FuncFParam", {NT("BType"), T("Ident")});
 
         // block -> '{' (blockItem)* '}';
+        add_production("Block", {T("{"), T("}")},
+                       nullptr, {{"block", "}"}});
         add_production("Block", {T("{"), NT("BlockItemList"), T("}")},
                        nullptr, {{"block", "}"}});
-        add_production("BlockItemList", {Epsilon()});
+        add_production("BlockItemList", {NT("BlockItem")});
         add_production("BlockItemList", {NT("BlockItemList"), NT("BlockItem")});
 
         // blockItem -> decl | stmt;

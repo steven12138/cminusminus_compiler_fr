@@ -175,6 +175,26 @@ namespace front::grammar {
                     // A -> alpha .
                     for (const auto &follow_set = grammar_.follow_set_[prod.head];
                          const auto &a: follow_set) {
+                        auto existing_it = action_table_.find({k, a});
+
+                        if (existing_it != action_table_.end()) {
+                            const auto &existing_action = existing_it->second;
+
+                            // Reduce -> Shift
+                            if (existing_action.type == SLRAction::ActionType::Shift) {
+                                // Shift First (Resolve in favor of Shift)
+                                // resolve dangling-else conflicts in favor of shift
+                                continue;
+                            }
+
+                            // reduce -> reduce
+                            if (existing_action.type == SLRAction::ActionType::Reduce) {
+                                std::cerr << "Warning: Reduce/Reduce conflict ignored." << std::endl;
+                                continue;
+                            }
+                        }
+
+                        // no conflict, insert reduce action
                         action_table_.insert_or_assign(
                             {k, a},
                             SLRAction::reduce(static_cast<int>(prod.id))
@@ -199,153 +219,144 @@ namespace front::grammar {
         return {id, true};
     }
 
+
+    static std::string trace_lhs_for_token(const Token &tok) {
+        switch (tok.type) {
+            case TokenType::Identifier:
+                return "Ident";
+
+            case TokenType::LiteralInt:
+                return "IntConst";
+
+            case TokenType::LiteralFloat:
+                return "floatConst";
+
+            case TokenType::KwInt:
+            case TokenType::KwVoid:
+            case TokenType::KwReturn:
+            case TokenType::KwFloat:
+            case TokenType::KwIf:
+            case TokenType::KwElse:
+            case TokenType::KwConst:
+            case TokenType::KwMain:
+                return tok.lexeme;
+
+            default:
+                return tok.lexeme;
+        }
+    }
+
+
     ParseResult SLRParser::parse(const std::vector<Token> &tokens) const {
         const auto &token_map = grammar_.token_to_terminal_;
 
         std::vector<int> state_stack;
-        state_stack.push_back(0);
+        state_stack.push_back(0); // start state
 
         size_t curr = 0;
-
-        // 3. 结果序列
         std::vector<ParseStep> result;
         result.reserve(tokens.size() * 2);
 
-        // 4. 主循环
-        while (true) {
+        while (!state_stack.empty()) {
             int s = state_stack.back();
+
+            Token current_token;
             Symbol a;
-            Token debug_tok; // 用于记录当前 token 信息 (用于错误报告)
-            bool is_eof = false;
 
-            // 5. 获取当前状态和输入符号
             if (curr < tokens.size()) {
-                // 存在实际输入 Token
-                const Token &tok = tokens[curr];
-                debug_tok = tok; // 记录 Token 信息用于后续的错误打印
+                current_token = tokens[curr];
+                if (!token_map.contains(current_token)) {
+                    result.emplace_back(Symbol::NonTerminal("ERROR"),
+                                        Symbol::Terminal(current_token.lexeme),
+                                        Error);
 
-                // Token -> Symbol 转换
-                if (!token_map.contains(tok)) {
-                    result.emplace_back(
-                        Symbol::NonTerminal("ERROR"),
-                        Symbol::Terminal(tok.lexeme),
-                        Error
-                    );
-                    std::cerr << "Parse Error! at line: " << tok.loc.line
-                            << ", col: " << tok.loc.column << std::endl;
-                    std::cerr << "Token not in grammar: " << tok.lexeme << std::endl;
-                    break;
+                    std::cerr << "Parse Error! at line: " << current_token.loc.line
+                            << ", col: " << current_token.loc.column << std::endl;
+                    std::cerr << "unexpected symbol: " << current_token.lexeme << std::endl;
+
+
+                    return {{}, result, false};
                 }
-                a = token_map.at(tok);
-            } else if (curr == tokens.size()) {
-                // **核心修复点：输入流耗尽，模拟 Lookahead 为 EOF ($)**
-                a = Symbol::End();
-                is_eof = true;
+                a = token_map.at(current_token);
             } else {
-                // ip > tokens.size()，内部逻辑错误，不应该发生
-                std::cerr << "Internal Parse Error: Input pointer advanced past end of stream." << std::endl;
-                break;
+                std::cerr << "Error: Reached end of input tokens, using End symbol as lookahead." << std::endl;
+                return {{}, result, false};
             }
 
-            // 6. 查 ACTION 表
+
             auto action_it = action_table_.find({s, a});
-
             if (action_it == action_table_.end()) {
-                // ACTION 表没有项 => 语法错误
-                result.emplace_back(
-                    Symbol::NonTerminal("ERROR"),
-                    a,
-                    Error
-                );
-
-                if (is_eof) {
-                    std::cerr << "Parse Error: No action for state " << s << " and End of File ($)" << std::endl;
-                } else {
-                    std::cerr << "Parse Error! at line: " << debug_tok.loc.line
-                            << ", col: " << debug_tok.loc.column << std::endl;
-                    std::cerr << "No action for state " << s << " and symbol " << a.name << std::endl;
-                }
-                break;
+                result.emplace_back(Symbol::NonTerminal("ERROR"), a, Error);
+                std::cerr << "Parse Error! at line: " << current_token.loc.line
+                        << ", col: " << current_token.loc.column << std::endl;
+                std::cerr << "No action for state " << s << " and lookahead " << a.name << std::endl;
+                return {{}, result, false};
             }
 
-            const SLRAction &act = action_it->second;
-            Symbol top_symbol; // 栈顶符号（根据动作类型确定）
-
-            // 7. 执行动作
-            switch (act.type) {
+            switch (const SLRAction &act = action_it->second; act.type) {
                 case SLRAction::ActionType::Shift: {
-                    // Shift（移进）：栈顶符号 = 当前输入符号（终结符）
-                    top_symbol = a;
-
-                    result.emplace_back(top_symbol, a, Move);
+                    // Shift
+                    Symbol lhs = T(trace_lhs_for_token(current_token));
+                    Symbol rhs = T(current_token.lexeme);
+                    result.emplace_back(lhs, rhs, Move);
                     state_stack.push_back(act.target);
-                    // 只有在 Shift 实际 Token 时才移动指针
-                    if (!is_eof) {
-                        ++curr;
+
+                    if (curr < tokens.size()) {
+                        curr++;
                     }
                     break;
                 }
+
                 case SLRAction::ActionType::Reduce: {
-                    // Reduce（归约）：栈顶符号 = 产生式头部（非终结符）
-                    int prod_id = act.target;
-                    const auto &prod = grammar_.productions[prod_id];
-                    top_symbol = prod.head;
-
-                    result.emplace_back(top_symbol, a, Reduction);
-
-                    // 根据产生式体长度弹栈（只弹非ε符号）
-                    int pop_count = 0;
-                    for (const auto &sym: prod.body) {
-                        if (!sym.is_epsilon()) {
-                            ++pop_count;
-                        }
+                    // Reduce
+                    const auto &prod = grammar_.productions[act.target];
+                    Symbol top_symbol = prod.head;
+                    if (prod.trace.has_value()) {
+                        result.emplace_back(NT(prod.trace->first), T(prod.trace->second), Reduction);
                     }
 
-                    // 弹栈
-                    for (int i = 0; i < pop_count && !state_stack.empty(); ++i) {
-                        state_stack.pop_back();
+                    // pop stack
+                    int pop_count = std::ranges::count_if(
+                        prod.body, [](const Symbol &sym) { return !sym.is_epsilon(); }
+                    );
+                    if (state_stack.size() < pop_count) {
+                        std::cerr << "Parse Error: State stack underflow during reduce" << std::endl;
+                        return {{}, result, false};
                     }
+                    state_stack.resize(state_stack.size() - pop_count);
 
+                    // GOTO
                     if (state_stack.empty()) {
-                        result.emplace_back(top_symbol, a, Error);
-                        std::cerr << "Parse Error: State stack empty during reduce" << std::endl;
-                        break;
+                        std::cerr << "Parse Error: Stack empty after pop" << std::endl;
+                        return {{}, result, false};
                     }
 
-                    // 查 GOTO 表
-                    int s2 = state_stack.back();
-                    auto goto_it = goto_table_.find({s2, prod.head});
+                    int s_prime = state_stack.back();
+                    auto goto_it = goto_table_.find({s_prime, prod.head});
+
                     if (goto_it == goto_table_.end()) {
                         result.emplace_back(top_symbol, a, Error);
-                        std::cerr << "Parse Error: No GOTO entry for state " << s2
-                                << " and non-terminal " << prod.head.name << std::endl;
-                        break;
+                        std::cerr << "Parse Error: No GOTO entry for state " << s_prime
+                                << " and symbol " << prod.head.name << std::endl;
+                        return {{}, result, false};
                     }
-                    int s3 = goto_it->second;
-                    state_stack.push_back(s3);
+
+                    state_stack.push_back(goto_it->second);
                     break;
                 }
-                case SLRAction::ActionType::Accept: {
-                    // Accept（接受）：栈顶符号 = 开始符号
-                    top_symbol = grammar_.start_symbol_;
 
-                    result.emplace_back(top_symbol, a, Accept);
-                    // 成功接受，返回成功结果
+                case SLRAction::ActionType::Accept: {
+                    result.emplace_back(grammar_.start_symbol_, a == End() ? T("EOF") : a, Accept);
                     return {nullptr, result, true};
                 }
                 default: {
-                    // Error (理论上不应发生，因为 action_it 已经找到)
-                    top_symbol = Symbol::NonTerminal("ERROR");
-                    result.emplace_back(top_symbol, a, Error);
-                    std::cerr << "Internal Parse Error: Unhandled action type." << std::endl;
-                    break; // 统一通过 break 退出 while 循环
+                    result.emplace_back(Symbol::NonTerminal("ERROR"), a, Error);
+                    std::cerr << "Parse Error: Invalid action type." << std::endl;
+                    return {{}, result, false};
                 }
             }
         }
 
-        // 如果是通过 break 退出，则认为是失败（尽管 ParseResult 返回 true 表示尝试已结束）
-        return {
-            {}, result, false // 退出循环即为解析失败，返回 false
-        };
+        return {{}, result, false};
     }
 }
