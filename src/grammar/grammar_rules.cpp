@@ -82,9 +82,9 @@ namespace front::grammar {
                        }, build_func_def, {{"funcDef", "block"}});
 
         // funcType -> 'void' | 'int' | 'float';
-        add_production("FuncType", {T("void")}, build_type_void);
-        add_production("FuncType", {T("func_int")}, build_type_int);
-        add_production("FuncType", {T("func_float")}, build_type_float);
+        add_production("FuncType", {T("void")}, build_type_void, {{"bType", "void"}});
+        add_production("FuncType", {T("func_int")}, build_type_int, {{"bType", "int"}});
+        add_production("FuncType", {T("func_float")}, build_type_float, {{"bType", "float"}});
 
         // funcFParams -> funcFParam (',' funcFParam)*;
         add_production("FuncFParams", {NT("FuncFParam")}, build_func_fparams_item);

@@ -91,9 +91,15 @@ namespace front::lexer {
         std::vector<Token> optimized_tokens;
         optimized_tokens.reserve(tokens.size());
         for (const auto &token: tokens) {
+#ifdef FILTER_INVALID_TOKENS
+            if (token.category != TokenCategory::Spacer && token.category != TokenCategory::Invalid) {
+                optimized_tokens.push_back(token);
+            }
+#else
             if (token.category != TokenCategory::Spacer) {
                 optimized_tokens.push_back(token);
             }
+#endif
         }
         tokens = std::move(optimized_tokens);
         tokens.push_back({TokenType::EndOfFile, TokenCategory::End, {row, column}, "$"});

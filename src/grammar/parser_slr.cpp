@@ -247,8 +247,9 @@ namespace front::grammar {
             case TokenType::KwIf:
             case TokenType::KwElse:
             case TokenType::KwConst:
-            case TokenType::KwMain:
                 return tok.lexeme;
+            case TokenType::KwMain:
+                return "Ident";
 
             default:
                 return tok.lexeme;
