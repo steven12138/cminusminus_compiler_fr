@@ -37,3 +37,12 @@ foreach (TEST_SRC IN LISTS TEST_SOURCES)
     add_test(NAME ${TARGET_NAME} COMMAND ${TARGET_NAME})
     set_tests_properties(${TARGET_NAME} PROPERTIES LABELS "unit;test")
 endforeach ()
+
+# Integration: compile sample to IR and execute via lli to verify runtime result.
+set(TEST_DATA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/data")
+add_test(
+        NAME integration_lli_arith
+        COMMAND /bin/sh -c
+        "$<TARGET_FILE:cmm> -o ${TEST_BIN_DIR}/lli_arith.ll ${TEST_DATA_DIR}/lli_arith.sy && lli ${TEST_BIN_DIR}/lli_arith.ll; rc=\$?; test \$rc -eq 7"
+)
+set_tests_properties(integration_lli_arith PROPERTIES LABELS "integration;ir")

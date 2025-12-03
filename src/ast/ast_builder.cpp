@@ -16,6 +16,10 @@ namespace front::ast {
     }
 
     SemVal build_single_forward(std::vector<SemVal> &rhs) {
+        if (std::holds_alternative<BlockPtr>(rhs[0])) {
+            StmtPtr ptr = std::move(std::get<BlockPtr>(rhs[0]));
+            return ptr;
+        }
         return std::move(rhs[0]);
     }
 
