@@ -4,13 +4,13 @@
 #include <unordered_set>
 #include <functional>
 #include <span>
-#include <optional> 
+#include <optional>
 
 #include "ast/ast.h"
 #include "symbol.h"
 
 namespace front::grammar {
-    using ActionFn = std::function<ast::SemVal(std::span<ast::SemVal>)>;
+    using ActionFn = std::function<ast::SemVal(std::vector<ast::SemVal> &)>;
 
     using TraceInfo = std::optional<std::pair<std::string, std::string> >;
 

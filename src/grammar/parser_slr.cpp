@@ -252,6 +252,7 @@ namespace front::grammar {
 
         std::vector<int> state_stack;
         state_stack.push_back(0); // start state
+        std::vector<ast::SemVal> val_stack;
 
         size_t curr = 0;
         std::vector<ParseStep> result;
@@ -301,6 +302,8 @@ namespace front::grammar {
                     result.emplace_back(lhs, rhs, Move);
                     state_stack.push_back(act.target);
 
+                    val_stack.push_back(ast::make_semantic(current_token));
+
                     if (curr < tokens.size()) {
                         curr++;
                     }
@@ -316,19 +319,36 @@ namespace front::grammar {
                     }
 
                     // pop stack
-                    int pop_count = std::ranges::count_if(
+                    const size_t pop_count = std::ranges::count_if(
                         prod.body, [](const Symbol &sym) { return !sym.is_epsilon(); }
                     );
                     if (state_stack.size() < pop_count) {
                         std::cerr << "Parse Error: State stack underflow during reduce" << std::endl;
                         return {{}, result, false};
                     }
+
+                    std::vector<ast::SemVal> rhs_vals;
+                    rhs_vals.reserve(pop_count);
+                    {
+                        const auto start_it = val_stack.end() - static_cast<int>(pop_count);
+                        std::ranges::move(
+                            std::ranges::subrange(start_it, val_stack.end()),
+                            std::back_inserter(rhs_vals)
+                        );
+                    }
+
                     state_stack.resize(state_stack.size() - pop_count);
+                    val_stack.resize(val_stack.size() - pop_count);
+                    // execute semantic action
+                    ast::SemVal new_val{std::monostate{}};
+                    if (prod.action) {
+                        new_val = prod.action(rhs_vals);
+                    }
 
                     // GOTO
                     if (state_stack.empty()) {
                         std::cerr << "Parse Error: Stack empty after pop" << std::endl;
-                        return {{}, result, false};
+                        return {nullptr, result, false};
                     }
 
                     int s_prime = state_stack.back();
@@ -338,25 +358,32 @@ namespace front::grammar {
                         result.emplace_back(top_symbol, a, Error);
                         std::cerr << "Parse Error: No GOTO entry for state " << s_prime
                                 << " and symbol " << prod.head.name << std::endl;
-                        return {{}, result, false};
+                        return {nullptr, result, false};
                     }
 
                     state_stack.push_back(goto_it->second);
+                    val_stack.push_back(std::move(new_val));
                     break;
                 }
 
                 case SLRAction::ActionType::Accept: {
                     result.emplace_back(grammar_.start_symbol_, a == End() ? T("EOF") : a, Accept);
-                    return {nullptr, result, true};
+                    ast::ProgramPtr root = nullptr;
+                    if (!val_stack.empty()) {
+                        if (auto p = std::get_if<ast::ProgramPtr>(&val_stack.back())) {
+                            root = std::move(*p);
+                        }
+                    }
+                    return {std::move(root), result, true};
                 }
                 default: {
                     result.emplace_back(Symbol::NonTerminal("ERROR"), a, Error);
                     std::cerr << "Parse Error: Invalid action type." << std::endl;
-                    return {{}, result, false};
+                    return {nullptr, result, false};
                 }
             }
         }
 
-        return {{}, result, false};
+        return {nullptr, result, false};
     }
 }

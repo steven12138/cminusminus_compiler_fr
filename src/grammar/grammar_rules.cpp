@@ -1,254 +1,268 @@
+#include "ast/ast_builder.h"
 #include "grammar/grammar.h"
 
 
 namespace front::grammar {
     void Grammar::init_rules(bool ll1) {
         start_symbol_ = NT("Program");
+        using namespace ast;
 
         // Program-> compUnit EOF
         add_production("Program", {NT("CompUnit")},
-                       nullptr, {{"Progrom", "EOF"}});
+                       build_single_forward, {{"Program", "EOF"}});
 
         // compUnit -> ( decl | funcDef)*
-        add_production("CompUnit", {Epsilon()});
-        add_production("CompUnit", {NT("CompUnitList")});
-        add_production("CompUnitList", {NT("CompUnitItem")});
-        add_production("CompUnitList", {NT("CompUnitList"), NT("CompUnitItem")});
-        add_production("CompUnitItem", {NT("Decl")});
-        add_production("CompUnitItem", {NT("FuncDef")});
+        add_production("CompUnit", {Epsilon()}, [](std::vector<SemVal> &_) -> SemVal {
+            return ProgramPtr(std::make_unique<Program>());
+        });
+        add_production("CompUnit", {NT("CompUnitList")}, build_single_forward);
+        add_production("CompUnitList", {NT("CompUnitItem")}, build_comp_unit_list_item);
+        add_production("CompUnitList", {NT("CompUnitList"), NT("CompUnitItem")},
+                       build_comp_unit_list_append);
+        add_production("CompUnitItem", {NT("Decl")}, build_single_forward);
+        add_production("CompUnitItem", {NT("FuncDef")}, build_single_forward);
 
 
         // decl -> constDecl | varDecl;
         add_production("Decl", {NT("ConstDecl")},
-                       nullptr, {{"decl", "constDecl"}});
+                       build_single_forward, {{"decl", "constDecl"}});
         add_production("Decl", {NT("VarDecl")},
-                       nullptr, {{"decl", "varDecl"}});
+                       build_single_forward, {{"decl", "varDecl"}});
 
         // constDecl -> 'const' bType constDef (',' constDef)* ';';
         add_production("ConstDecl", {
                            T("const"), NT("BType"), NT("ConstDefList"), T(";")
-                       }, nullptr, {{"constDecl", "SE_SEMICOLON"}});
-        add_production("ConstDefList", {NT("ConstDef")});
+                       }, build_const_decl, {{"constDecl", "SE_SEMICOLON"}});
+        add_production("ConstDefList", {NT("ConstDef")}, build_def_list_item);
         add_production("ConstDefList", {
                            NT("ConstDefList"), T(","), NT("ConstDef")
-                       });
+                       }, build_def_list_append);
 
         // bType -> 'int' | 'float';
         add_production("BType", {T("int")},
-                       nullptr, {{"bType", "int"}});
+                       build_type_int, {{"bType", "int"}});
         add_production("BType", {T("float")},
-                       nullptr, {{"bType", "float"}});
+                       build_type_float, {{"bType", "float"}});
 
         // constDef -> Ident '=' constInitVal;
         add_production("ConstDef", {T("Ident"), T("="), NT("ConstInitVal")},
-                       nullptr, {{"constDef", "ConstInitVal"}});
+                       build_const_def, {{"constDef", "ConstInitVal"}});
 
         //  constInitVal -> constExp
         add_production("ConstInitVal", {NT("ConstExp")},
-                       nullptr, {{"constInitVal", "constExp"}});
+                       build_single_forward, {{"constInitVal", "constExp"}});
 
         // varDecl -> bType varDef (',' varDef)* ';';
         add_production("VarDecl", {NT("BType"), NT("VarDefList"), T(";")},
-                       nullptr, {{"varDecl", ";"}});
-        add_production("VarDefList", {NT("VarDef")});
-        add_production("VarDefList", {NT("VarDefList"), T(","), NT("VarDef")});
+                       build_var_decl, {{"varDecl", ";"}});
+        add_production("VarDefList", {NT("VarDef")}, build_def_list_item);
+        add_production("VarDefList", {NT("VarDefList"), T(","), NT("VarDef")},
+                       build_def_list_append);
 
         // varDef -> Ident | Ident '=' initVal ;
         add_production("VarDef", {T("Ident")},
-                       nullptr, {{"varDef", "Ident"}});
+                       build_var_def_uninit, {{"varDef", "Ident"}});
         add_production("VarDef", {T("Ident"), T("="), NT("InitVal")},
-                       nullptr, {{"varDef", "initVal"}});
+                       build_var_def_init, {{"varDef", "initVal"}});
 
         // initVal -> exp;
         add_production("InitVal", {NT("Exp")},
-                       nullptr, {{"initVal", "exp"}});
+                       build_single_forward, {{"initVal", "exp"}});
 
         // funcDef -> funcType Ident '(' (funcFParams)? ')' block;
         add_production("FuncDef", {
                            NT("FuncType"), T("Ident"),
                            T("("), T(")"),
                            NT("Block")
-                       }, nullptr, {{"funcDef", "block"}});
+                       }, build_func_def_no_params, {{"funcDef", "block"}});
         add_production("FuncDef", {
                            NT("FuncType"), T("Ident"),
                            T("("), NT("FuncFParams"), T(")"),
                            NT("Block")
-                       }, nullptr, {{"funcDef", "block"}});
+                       }, build_func_def, {{"funcDef", "block"}});
 
         // funcType -> 'void' | 'int' | 'float';
-        add_production("FuncType", {T("void")});
-        add_production("FuncType", {T("func_int")});
-        add_production("FuncType", {T("func_float")});
+        add_production("FuncType", {T("void")}, build_type_void);
+        add_production("FuncType", {T("func_int")}, build_type_int);
+        add_production("FuncType", {T("func_float")}, build_type_float);
 
         // funcFParams -> funcFParam (',' funcFParam)*;
-        add_production("FuncFParams", {NT("FuncFParam")});
-        add_production("FuncFParams", {NT("FuncFParams"), T(","), NT("FuncFParam")});
+        add_production("FuncFParams", {NT("FuncFParam")}, build_func_fparams_item);
+        add_production("FuncFParams", {NT("FuncFParams"), T(","), NT("FuncFParam")},
+                       build_func_fparams_append);
 
         // funcFParam -> bType Ident;
-        add_production("FuncFParam", {NT("BType"), T("Ident")});
+        add_production("FuncFParam", {NT("BType"), T("Ident")}, build_func_fparam);
 
         // block -> '{' (blockItem)* '}';
         add_production("Block", {T("{"), T("}")},
-                       nullptr, {{"block", "}"}});
+                       build_block_empty, {{"block", "}"}});
         add_production("Block", {T("{"), NT("BlockItemList"), T("}")},
-                       nullptr, {{"block", "}"}});
-        add_production("BlockItemList", {NT("BlockItem")});
-        add_production("BlockItemList", {NT("BlockItemList"), NT("BlockItem")});
+                       build_block, {{"block", "}"}});
+
+        add_production("BlockItemList", {NT("BlockItem")}, build_block_item_list_item);
+        add_production("BlockItemList", {NT("BlockItemList"), NT("BlockItem")},
+                       build_block_item_list_append);
 
         // blockItem -> decl | stmt;
         add_production("BlockItem", {NT("Decl")},
-                       nullptr, {{"blockItem", "decl"}});
+                       build_block_item_decl, {{"blockItem", "decl"}});
         add_production("BlockItem", {NT("Stmt")},
-                       nullptr, {{"blockItem", "stmt"}});
+                       build_block_item_stmt, {{"blockItem", "stmt"}});
 
-        // stmt ->lVal '=' exp ';'
-        //   | (exp)? ';'
-        //   | block
-        //   | 'if' '(' cond ')' stmt ('else' stmt)?
-        //   | 'return' (exp)? ';';
+        // stmt rules
         add_production("Stmt", {NT("LVal"), T("="), NT("Exp"), T(";")},
-                       nullptr, {{"stmt", ";"}});
+                       build_stmt_assign, {{"stmt", ";"}});
         add_production("Stmt", {NT("Exp"), T(";")},
-                       nullptr, {{"stmt", ";"}});
+                       build_stmt_exp, {{"stmt", ";"}});
         add_production("Stmt", {T(";")},
-                       nullptr, {{"stmt", ";"}});
+                       build_stmt_empty, {{"stmt", ";"}});
         add_production("Stmt", {NT("Block")},
-                       nullptr, {{"stmt", "block"}});
+                       build_single_forward, {{"stmt", "block"}});
         add_production("Stmt", {
                            T("if"), T("("), NT("Cond"), T(")"), NT("Stmt")
-                       }, nullptr, {{"stmt", "if"}});
+                       }, build_stmt_if, {{"stmt", "if"}});
         add_production("Stmt", {
                            T("if"), T("("), NT("Cond"), T(")"), NT("Stmt"),
                            T("else"), NT("Stmt")
-                       }, nullptr, {{"stmt", "if-else"}});
+                       }, build_stmt_if_else, {{"stmt", "if-else"}});
         add_production("Stmt", {T("return"), NT("Exp"), T(";")},
-                       nullptr, {{"stmt", ";"}});
+                       build_stmt_return, {{"stmt", ";"}});
         add_production("Stmt", {T("return"), T(";")},
-                       nullptr, {{"stmt", ";"}});
+                       build_stmt_return_void, {{"stmt", ";"}});
 
         // exp -> addExp;
         // add_production("Exp", {NT("AddExp")});
         add_production("Exp", {NT("LOrExp")},
-                       nullptr, {{"exp", "lOrExp"}});
+                       build_single_forward, {{"exp", "lOrExp"}});
 
         // cond -> lOrExp;
         add_production("Cond", {NT("LOrExp")},
-                       nullptr, {{"cond", "lOrExp"}});
+                       build_single_forward, {{"cond", "lOrExp"}});
         // add_production("Cond", {NT("Exp")});
 
         // lVal -> Ident;
         add_production("LVal", {T("Ident")},
-                       nullptr, {{"lVal", "Ident"}});
+                       build_lval_ident, {{"lVal", "Ident"}});
 
         // primaryExp -> '(' exp ')'
-        //     | lVal
-        //     | number;
         add_production("PrimaryExp", {T("("), NT("Exp"), T(")")},
-                       nullptr, {{"primaryExp", ")"}});
+                       [](std::vector<SemVal> &rhs) { return std::move(rhs[1]); },
+                       {{"primaryExp", ")"}});
+
         add_production("PrimaryExp", {NT("LVal")},
-                       nullptr, {{"primaryExp", "lVal"}});
+                       build_exp_lval, {{"primaryExp", "lVal"}});
         add_production("PrimaryExp", {NT("Number")},
-                       nullptr, {{"primaryExp", "number"}});
+                       build_single_forward, {{"primaryExp", "number"}});
 
         // number -> IntConst | floatConst;
         add_production("Number", {NT("IntConst")},
-                       nullptr, {{"number", "IntConst"}});
+                       build_exp_int, {{"number", "IntConst"}});
         add_production("Number", {NT("FloatConst")},
-                       nullptr, {{"number", "floatConst"}});
+                       build_exp_float, {{"number", "floatConst"}});
 
         // unaryExp -> primaryExp
-        //     | Ident '(' (funcRParams)? ')'
-        //     | unaryOp unaryExp;
         add_production("UnaryExp", {NT("PrimaryExp")},
-                       nullptr, {{"unaryExp", "primaryExp"}});
+                       build_single_forward, {{"unaryExp", "primaryExp"}});
+
+        // Function Call
+        // Ident ( Opt ) -> build_exp_call
         add_production("UnaryExp", {
                            T("Ident"),
                            T("("), NT("FuncRParamsOpt"), T(")")
-                       }, nullptr, {{"unaryExp", "call"}});
+                       }, build_exp_call, {{"unaryExp", "call"}});
+
+        // unaryOp unaryExp
         add_production("UnaryExp", {NT("UnaryOp"), NT("UnaryExp")},
-                       nullptr, {{"unaryExp", "unaryOp"}});
-        add_production("FuncRParamsOpt", {Epsilon()});
-        add_production("FuncRParamsOpt", {NT("FuncRParams")});
+                       build_unary_exp, {{"unaryExp", "unaryOp"}});
+
+        // FuncRParamsOpt
+        add_production("FuncRParamsOpt", {Epsilon()},
+                       [](std::vector<SemVal> &) { return SemVal{}; });
+        add_production("FuncRParamsOpt", {NT("FuncRParams")}, build_single_forward);
 
         // unaryOp -> '+' | '-' | '!';
-        add_production("UnaryOp", {T("+")});
-        add_production("UnaryOp", {T("-")});
-        add_production("UnaryOp", {T("!")});
+        add_production("UnaryOp", {T("+")}, build_unary_op_positive);
+        add_production("UnaryOp", {T("-")}, build_unary_op_negative);
+        add_production("UnaryOp", {T("!")}, build_unary_op_not);
 
         // funcRParams -> funcRParam (',' funcRParam)*;
-        add_production("FuncRParams", {NT("FuncRParam")});
+        add_production("FuncRParams", {NT("FuncRParam")}, build_func_rparams_item);
         add_production("FuncRParams", {
                            NT("FuncRParams"), T(","), NT("FuncRParam")
-                       });
+                       }, build_func_rparams_append);
 
         // funcRParam -> exp;
-        add_production("FuncRParam", {NT("Exp")});
+        add_production("FuncRParam", {NT("Exp")}, build_single_forward);
+
+        // --- Binary Expressions (Using shared builder logic) ---
 
         // mulExp -> unaryExp
         //   | mulExp ('*' | '/' | '%') unaryExp ;
         add_production("MulExp", {NT("UnaryExp")},
-                       nullptr, {{"mulExp", "unaryExp"}});
+                       build_single_forward, {{"mulExp", "unaryExp"}});
         add_production("MulExp", {NT("MulExp"), T("*"), NT("UnaryExp")},
-                       nullptr, {{"mulExp", "*"}});
+                       build_binary_mul, {{"mulExp", "*"}});
         add_production("MulExp", {NT("MulExp"), T("/"), NT("UnaryExp")},
-                       nullptr, {{"mulExp", "/"}});
+                       build_binary_div, {{"mulExp", "/"}});
         add_production("MulExp", {NT("MulExp"), T("%"), NT("UnaryExp")},
-                       nullptr, {{"mulExp", "%"}});
+                       build_binary_mod, {{"mulExp", "%"}});
 
         // addExp -> mulExp | addExp ('+' | '-') mulExp;
         add_production("AddExp", {NT("MulExp")},
-                       nullptr, {{"addExp", "mulExp"}});
+                       build_single_forward, {{"addExp", "mulExp"}});
         add_production("AddExp", {NT("AddExp"), T("+"), NT("MulExp")},
-                       nullptr, {{"addExp", "+"}});
+                       build_binary_add, {{"addExp", "+"}});
         add_production("AddExp", {NT("AddExp"), T("-"), NT("MulExp")},
-                       nullptr, {{"addExp", "-"}});
+                       build_binary_sub, {{"addExp", "-"}});
 
         // relExp -> addExp
         //   | relExp ('<' | '>' | '<=' | '>=') addExp;
         add_production("RelExp", {NT("AddExp")},
-                       nullptr, {{"relExp", "addExp"}});
+                       build_single_forward, {{"relExp", "addExp"}});
         add_production("RelExp", {NT("RelExp"), T("<"), NT("AddExp")},
-                       nullptr, {{"relExp", "<"}});
+                       build_binary_lt, {{"relExp", "<"}});
         add_production("RelExp", {NT("RelExp"), T(">"), NT("AddExp")},
-                       nullptr, {{"relExp", ">"}});
+                       build_binary_gt, {{"relExp", ">"}});
         add_production("RelExp", {NT("RelExp"), T("<="), NT("AddExp")},
-                       nullptr, {{"relExp", "<="}});
+                       build_binary_le, {{"relExp", "<="}});
         add_production("RelExp", {NT("RelExp"), T(">="), NT("AddExp")},
-                       nullptr, {{"relExp", ">="}});
+                       build_binary_ge, {{"relExp", ">="}});
 
         // eqExp -> relExp
         //   | eqExp ('==' | '!=') relExp;
         add_production("EqExp", {NT("RelExp")},
-                       nullptr, {{"eqExp", "relExp"}});
+                       build_single_forward, {{"eqExp", "relExp"}});
         add_production("EqExp", {NT("EqExp"), T("=="), NT("RelExp")},
-                       nullptr, {{"eqExp", "=="}});
+                       build_binary_eq, {{"eqExp", "=="}});
         add_production("EqExp", {NT("EqExp"), T("!="), NT("RelExp")},
-                       nullptr, {{"eqExp", "!="}});
+                       build_binary_neq, {{"eqExp", "!="}});
 
         // lAndExp -> eqExp
         //    | lAndExp '&&' eqExp;
         add_production("LAndExp", {NT("EqExp")},
-                       nullptr, {{"lAndExp", "eqExp"}});
+                       build_single_forward, {{"lAndExp", "eqExp"}});
         add_production("LAndExp", {NT("LAndExp"), T("&&"), NT("EqExp")},
-                       nullptr, {{"lAndExp", "&&"}});
+                       build_binary_and, {{"lAndExp", "&&"}});
 
         // lOrExp -> lAndExp
         //     | lOrExp '||' lAndExp;
         add_production("LOrExp", {NT("LAndExp")},
-                       nullptr, {{"lOrExp", "lAndExp"}});
+                       build_single_forward, {{"lOrExp", "lAndExp"}});
         add_production("LOrExp", {NT("LOrExp"), T("||"), NT("LAndExp")},
-                       nullptr, {{"lOrExp", "||"}});
+                       build_binary_or, {{"lOrExp", "||"}});
 
         // constExp -> addExp;
         add_production("ConstExp", {NT("AddExp")},
-                       nullptr, {{"constExp", "addExp"}});
+                       build_single_forward, {{"constExp", "addExp"}});
 
         // IntConst -> [0-9]+ ;
-        add_production("IntConst", {T("LiteralInt")});
+        // Note: build_exp_int handles the conversion from raw token int to ExprPtr
+        add_production("IntConst", {T("LiteralInt")}, build_single_forward);
         // Ident -> [a-zA-Z_][a-zA-Z_0-9]*;
-        add_production("Ident", {T("Identifier")});
+        add_production("Ident", {T("Identifier")}, build_single_forward);
         // floatConst -> [0-9]+'.'[0-9]+
-        add_production("FloatConst", {T("LiteralFloat")});
+        add_production("FloatConst", {T("LiteralFloat")}, build_single_forward);
 
         init_token_map();
     }

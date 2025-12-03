@@ -21,19 +21,17 @@ namespace front::ast {
 
     struct Node {
         virtual ~Node() = default;
-
-        Location loc{};
     };
 
     struct Expr : Node {
         virtual ~Expr() = default;
     };
 
-    struct LiteralInt : Node {
+    struct LiteralInt : Expr {
         int value{};
     };
 
-    struct LiteralFloat : Node {
+    struct LiteralFloat : Expr {
         float value{};
     };
 
@@ -111,7 +109,6 @@ namespace front::ast {
     struct VarInit {
         std::string name;
         std::unique_ptr<Expr> value;
-        Location loc{};
     };
 
     struct VarDecl : Decl {
@@ -123,7 +120,6 @@ namespace front::ast {
     struct Param {
         BasicType type{BasicType::Int};
         std::string name;
-        Location loc{};
     };
 
     struct FuncDef : Node {
@@ -153,6 +149,7 @@ namespace front::ast {
         int,
         float,
         BasicType,
+        UnaryOp,
 
         BlockItem,
         std::vector<VarInit>,
@@ -166,4 +163,8 @@ namespace front::ast {
         FuncPtr,
         ProgramPtr
     >;
+
+    SemVal make_semantic(const Token &token);
+
+    void print_ast(const ProgramPtr &program, std::ostream &os);
 }
