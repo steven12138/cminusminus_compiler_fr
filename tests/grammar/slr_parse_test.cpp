@@ -4,19 +4,20 @@
 #include "grammar/parser_slr.h"
 #include "lexer/lexer.h"
 #include "token.h"
+#include "ir/ir_generator.h"
 
 using namespace front;
 
 int main() {
     const std::string source = R"(
 
-int fd(int a){return a-1;}
+void d(){
+return ;
+}
 
-int main(){
-    int a=1,b=2,c=3;
-    c = fd(c);
-    a=b*c;
-    return a;
+void main(){
+d();
+return ;
 }
 )";
 
@@ -33,12 +34,43 @@ int main(){
 
     // 2. 构造文法和 SLR 解析器
     grammar::Grammar grammar{};
+
+    grammar.print_follow_set(std::cout);
+
     grammar::SLRParser parser{std::move(grammar)};
 
     // 3. 运行 SLR 解析
     auto res = parser.parse(tokens);
 
+
     ast::print_ast(res.program, std::cout);
+
+    auto a = ir::IRGenerator::generate(res.program);
+
+
+    auto steps = res.actions;
+
+    // 4. 输出规约序列（作业要求格式的雏形）
+    for (size_t i = 0; i < steps.size(); ++i) {
+        const auto &[top, lookahead, action] = steps[i];
+        std::cout << (i + 1) << '\t'
+                << top << '#' << lookahead << '\t';
+        switch (action) {
+            case grammar::Move:
+                std::cout << "move";
+                break;
+            case grammar::Reduction:
+                std::cout << "reduction";
+                break;
+            case grammar::Accept:
+                std::cout << "accept";
+                break;
+            case grammar::Error:
+                std::cout << "error";
+                break;
+        }
+        std::cout << '\n';
+    }
 
     return 0;
 }

@@ -2,11 +2,18 @@
 // Created by steven on 12/2/25.
 //
 #pragma once
-#include <variant>
 #include <memory>
+#include <string>
+#include <variant>
+#include <vector>
 
 #include "token.h"
+#include "Value.h"
 
+
+namespace front::ir {
+    class CodegenContext;
+}
 
 namespace front::ast {
     enum class BasicType { Int, Void, Float };
@@ -24,66 +31,93 @@ namespace front::ast {
     };
 
     struct Expr : Node {
-        virtual ~Expr() = default;
+        virtual Value *codegen(ir::CodegenContext &ctx) = 0;
+
+        ~Expr() override = default;
     };
 
     struct LiteralInt : Expr {
         int value{};
+
+        Value *codegen(ir::CodegenContext &ctx) override;
     };
 
     struct LiteralFloat : Expr {
         float value{};
+
+        Value *codegen(ir::CodegenContext &ctx) override;
     };
 
     struct IdentifierExpr : Expr {
         std::string name;
+
+        Value *codegen(ir::CodegenContext &ctx) override;
     };
 
     struct UnaryExpr : Expr {
         UnaryOp op;
         std::unique_ptr<Expr> operand;
+
+        Value *codegen(ir::CodegenContext &ctx) override;
     };
 
     struct BinaryExpr : Expr {
         BasicOp op;
         std::unique_ptr<Expr> lhs;
         std::unique_ptr<Expr> rhs;
+
+        Value *codegen(ir::CodegenContext &ctx) override;
     };
 
     struct CallExpr : Expr {
         std::string callee;
         std::vector<std::unique_ptr<Expr> > args;
+
+        Value *codegen(ir::CodegenContext &ctx) override;
     };
 
     struct Stmt : Node {
-        virtual ~Stmt() = default;
+        virtual void codegen(ir::CodegenContext &ctx) = 0;
+
+        ~Stmt() override = default;
     };
 
     struct EmptyStmt : Stmt {
+        void codegen(ir::CodegenContext &ctx) override;
     };
 
     struct ExprStmt : Stmt {
         std::unique_ptr<Expr> expr;
+
+        void codegen(ir::CodegenContext &ctx) override;
     };
 
     struct AssignStmt : Stmt {
         std::string target;
         std::unique_ptr<Expr> expr;
+
+        void codegen(ir::CodegenContext &ctx) override;
     };
 
     struct ReturnStmt : Stmt {
         std::unique_ptr<Expr> value;
+
+        void codegen(ir::CodegenContext &ctx) override;
     };
 
     struct IfStmt : Stmt {
         std::unique_ptr<Expr> condition;
         std::unique_ptr<Stmt> then_branch;
         std::unique_ptr<Stmt> else_branch;
+
+        void codegen(ir::CodegenContext &ctx) override;
     };
 
 
     struct Decl : Node {
-        virtual ~Decl() = default;
+        virtual void codegen(ir::CodegenContext &ctx) = 0;
+
+        ~Decl() override = default;
     };
 
     struct BlockItem {
@@ -104,6 +138,8 @@ namespace front::ast {
 
     struct BlockStmt : Stmt {
         std::vector<BlockItem> items;
+
+        void codegen(ir::CodegenContext &ctx) override;
     };
 
     struct VarInit {
@@ -115,6 +151,8 @@ namespace front::ast {
         bool is_const{false};
         BasicType type{BasicType::Int};
         std::vector<VarInit> items;
+
+        void codegen(ir::CodegenContext &ctx) override;
     };
 
     struct Param {
@@ -127,11 +165,15 @@ namespace front::ast {
         std::string name;
         std::vector<Param> params;
         std::unique_ptr<BlockStmt> body;
+
+        void codegen(ir::CodegenContext &ctx);
     };
 
     struct Program : Node {
         std::vector<std::unique_ptr<Decl> > globals;
         std::vector<std::unique_ptr<FuncDef> > functions;
+
+        void codegen(ir::CodegenContext &ctx) const;
     };
 
     using ExprPtr = std::unique_ptr<Expr>;

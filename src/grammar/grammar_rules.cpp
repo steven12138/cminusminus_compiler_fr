@@ -3,7 +3,7 @@
 
 
 namespace front::grammar {
-    void Grammar::init_rules(bool ll1) {
+    void Grammar::init_rules(bool) {
         start_symbol_ = NT("Program");
         using namespace ast;
 
@@ -12,7 +12,7 @@ namespace front::grammar {
                        build_single_forward, {{"Program", "EOF"}});
 
         // compUnit -> ( decl | funcDef)*
-        add_production("CompUnit", {Epsilon()}, [](std::vector<SemVal> &_) -> SemVal {
+        add_production("CompUnit", {Epsilon()}, [](std::vector<SemVal> &) -> SemVal {
             return ProgramPtr(std::make_unique<Program>());
         });
         add_production("CompUnit", {NT("CompUnitList")}, build_single_forward);

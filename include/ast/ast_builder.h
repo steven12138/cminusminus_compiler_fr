@@ -5,11 +5,11 @@
 #include "ast.h"
 
 namespace front::ast {
-    // --- General / Forwarding ---
+    // General / Forwarding 
     // type1. copy/forward single child
     SemVal build_single_forward(std::vector<SemVal> &rhs);
 
-    // --- Types ---
+    // Types 
     // type2. Btype/FuncType -> BasicType
     SemVal build_type_int(std::vector<SemVal> &rhs);
 
@@ -17,13 +17,13 @@ namespace front::ast {
 
     SemVal build_type_void(std::vector<SemVal> &rhs);
 
-    // --- Program Structure ---
+    // Program Structure 
     // CompUnitList building
     SemVal build_comp_unit_list_item(std::vector<SemVal> &rhs);
 
     SemVal build_comp_unit_list_append(std::vector<SemVal> &rhs);
 
-    // --- Declarations ---
+    // Declarations 
     // Decl builders
     SemVal build_const_decl(std::vector<SemVal> &rhs);
 
@@ -41,7 +41,7 @@ namespace front::ast {
 
     SemVal build_var_def_init(std::vector<SemVal> &rhs);
 
-    // --- Functions ---
+    // Functions 
     SemVal build_func_def(std::vector<SemVal> &rhs);
 
     SemVal build_func_def_no_params(std::vector<SemVal> &rhs); // Handle case without params if grammar splits it
@@ -53,7 +53,7 @@ namespace front::ast {
 
     SemVal build_func_fparam(std::vector<SemVal> &rhs);
 
-    // --- Block / Statements ---
+    // Block / Statements 
     SemVal build_block(std::vector<SemVal> &rhs);
 
     SemVal build_block_empty(std::vector<SemVal> &rhs); // {}
@@ -82,7 +82,7 @@ namespace front::ast {
 
     SemVal build_stmt_return_void(std::vector<SemVal> &rhs);
 
-    // --- Expressions ---
+    // Expressions 
     // Basic literals
     SemVal build_exp_int(std::vector<SemVal> &rhs);
 

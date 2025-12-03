@@ -41,4 +41,6 @@ namespace front::lexer {
 
         void advance(const std::string &lexeme);
     };
+
+    std::ostream &print_tokens(std::ostream &os, const std::vector<Token> &token);
 }

@@ -451,7 +451,6 @@ namespace front::grammar {
         eliminate_back_tracing();
 
         size_t cnt = productions.size();
-        int n = static_cast<int>(non_terminals.size());
         bool changed = true;
         while (changed) {
             changed = false;

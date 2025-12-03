@@ -6,7 +6,6 @@
 #include <stdexcept>
 
 namespace front::ast {
-
     // Utils
     void add_to_program(Program &prog, SemVal &item) {
         if (std::holds_alternative<DeclPtr>(item)) {
@@ -278,9 +277,16 @@ namespace front::ast {
     SemVal build_func_rparams_append(std::vector<SemVal> &rhs) {
         auto list = std::move(std::get<std::vector<VarInit> >(rhs[0]));
         auto item_vec = std::move(std::get<std::vector<VarInit> >(rhs[2]));
-        list.insert(list.end(), std::make_move_iterator(item_vec.begin()), std::make_move_iterator(item_vec.end()));
+
+        list.insert(
+            list.end(),
+            std::make_move_iterator(item_vec.begin()),
+            std::make_move_iterator(item_vec.end())
+        );
+
         return list;
     }
+
 
     SemVal build_exp_call(std::vector<SemVal> &rhs) {
         auto node = std::make_unique<CallExpr>();

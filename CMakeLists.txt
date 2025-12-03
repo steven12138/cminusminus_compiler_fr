@@ -4,6 +4,8 @@ project(c_minus_frontend LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 
+set(TARGET_NAME "cmm")
+
 # for vscode extensions
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -39,19 +41,19 @@ target_include_directories(frontend_utils PUBLIC
         "${CMAKE_CURRENT_SOURCE_DIR}/external/compiler_ir/include"
 )
 
-add_executable(compiler_frontend ${FRONTEND_SOURCES})
+add_executable(${TARGET_NAME} ${FRONTEND_SOURCES})
 
 target_include_directories(
-        compiler_frontend
+        ${TARGET_NAME}
         PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include"
         "${CMAKE_CURRENT_SOURCE_DIR}/external/compiler_ir/include")
 
-target_link_libraries(compiler_frontend PRIVATE compiler_ir)
+target_link_libraries(${TARGET_NAME} PRIVATE compiler_ir)
 
 if (MSVC)
-    target_compile_options(compiler_frontend PRIVATE /W4 /permissive-)
+    target_compile_options(${TARGET_NAME} PRIVATE /W4 /permissive-)
 else ()
-    target_compile_options(compiler_frontend PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(${TARGET_NAME} PRIVATE -Wall -Wextra -Wpedantic)
 endif ()
 
 option(BUILD_TESTS "Build test executables under tests/*/*.cpp" ON)

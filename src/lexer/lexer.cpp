@@ -177,4 +177,111 @@ namespace front::lexer {
             }
         }
     }
+
+    std::ostream &print_tokens(std::ostream &os, const Token &token) {
+        // EOF 不输出，直接返回
+        if (token.type == TokenType::EndOfFile) {
+            return os;
+        }
+
+        // 共通前缀: 词面值 + 制表符 + '<'
+        os << token.lexeme << '\t' << '<';
+
+        switch (token.type) {
+            // ===== 关键字 KW =====
+            case TokenType::KwInt: os << "KW,1";
+                break;
+            case TokenType::KwVoid: os << "KW,2";
+                break;
+            case TokenType::KwReturn: os << "KW,3";
+                break;
+            case TokenType::KwConst: os << "KW,4";
+                break;
+            case TokenType::KwMain: os << "KW,5";
+                break;
+            case TokenType::KwFloat: os << "KW,6";
+                break;
+            case TokenType::KwIf: os << "KW,7";
+                break;
+            case TokenType::KwElse: os << "KW,8";
+                break;
+
+            // ===== 运算符 OP =====
+            case TokenType::OpPlus: os << "OP,6";
+                break;
+            case TokenType::OpMinus: os << "OP,7";
+                break;
+            case TokenType::OpMultiply: os << "OP,8";
+                break;
+            case TokenType::OpDivide: os << "OP,9";
+                break;
+            case TokenType::OpMod: os << "OP,10";
+                break;
+            case TokenType::OpAssign: os << "OP,11";
+                break;
+            case TokenType::OpGreater: os << "OP,12";
+                break;
+            case TokenType::OpLess: os << "OP,13";
+                break;
+            case TokenType::OpEqual: os << "OP,14";
+                break;
+            case TokenType::OpLessEqual: os << "OP,15";
+                break;
+            case TokenType::OpGreaterEqual: os << "OP,16";
+                break;
+            case TokenType::OpNotEqual: os << "OP,17";
+                break;
+            case TokenType::OpAnd: os << "OP,18";
+                break;
+            case TokenType::OpOr: os << "OP,19";
+                break;
+
+            // ===== 界符 SE =====
+            case TokenType::SepLParen: os << "SE,20";
+                break;
+            case TokenType::SepRParen: os << "SE,21";
+                break;
+            case TokenType::SepLBrace: os << "SE,22";
+                break;
+            case TokenType::SepRBrace: os << "SE,23";
+                break;
+            case TokenType::SepSemicolon: os << "SE,24";
+                break;
+            case TokenType::SepComma: os << "SE,25";
+                break;
+
+            // ===== 标识符 / 常量 =====
+            case TokenType::Identifier:
+                os << "IDN," << token.lexeme;
+                break;
+
+            case TokenType::LiteralInt:
+                os << "INT," << token.lexeme;
+                break;
+
+            case TokenType::LiteralFloat:
+                os << "FLOAT," << token.lexeme;
+                break;
+
+            // 其他（包括 Spacer / Invalid / KwIntFunc / KwFloatFunc）
+            default:
+                os << "UNKNOWN";
+                break;
+        }
+
+        os << '>';
+        return os;
+    }
+
+    std::ostream &print_tokens(std::ostream &os,
+                               const std::vector<Token> &tokens) {
+        for (const auto &tok: tokens) {
+            if (tok.type == TokenType::EndOfFile) {
+                continue; // 按你原来语义 EOF 不输出
+            }
+            print_tokens(os, tok);
+            os << '\n';
+        }
+        return os;
+    }
 }

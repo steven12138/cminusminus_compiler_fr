@@ -73,6 +73,14 @@ namespace front::grammar {
                 if (inserted) {
                     q.push(*iter);
                 }
+
+                if (prod.body.size() == 1 && prod.body[0].is_epsilon()) {
+                    Item complete_item{std::make_shared<Production>(prod), 1};
+                    auto [it2, inserted2] = closure.insert(complete_item);
+                    if (inserted2) {
+                        q.push(*it2);
+                    }
+                }
             }
         }
     }
@@ -100,6 +108,7 @@ namespace front::grammar {
             // for each item [A -> α.Xβ] in I, group by X
             // insert A -> αX.β , collect in symbol_groups
             for (const auto &item: curr_set) {
+                if (item.is_complete()) continue;
                 Symbol X = item.dot();
                 if (X == Symbol::Epsilon()) continue;
 
