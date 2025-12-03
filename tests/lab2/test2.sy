@@ -1,0 +1,25 @@
+void main ( ) {
+  const int N = 10 , M = 2 ;
+  float rate = 0.5 , base = 3.14 ;
+
+  int x = 0 , y = 1 ;
+  x = x + N - M * 2 / 1 % 2 ;
+
+  if ( ( x >= y && rate != 0.0 ) || ( N < M ) ) {
+    y = ( y + 1 ) ;
+  } else {
+    y = ( y - 1 ) ;
+  }
+
+  x = x > y ;
+  x = x < y ;
+  x = ( x == y ) ;
+  x = ( x <= y ) ;
+  x = ( x >= y ) ;
+
+  ^
+  &
+  : ?
+
+  return ;
+}

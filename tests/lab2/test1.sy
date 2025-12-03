@@ -1,0 +1,11 @@
+int main ( ) {
+  int a = 1 , b = 2 ;
+
+  a = a + b - 1 ;
+  if ( a == 2 ) {
+    return 0 ;
+  } else {
+    b = b * 2 / 1 % 2 ;
+    return 1 ;
+  }
+}

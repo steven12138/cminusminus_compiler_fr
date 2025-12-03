@@ -39,6 +39,7 @@ struct Options {
     bool emit_ir_stdout{true};
     bool dump_tokens{false};
     bool dump_parse{false};
+    bool lex_only{false};
 };
 
 static std::optional<Options> parse_args(int argc, char *argv[]) {
@@ -68,6 +69,16 @@ static std::optional<Options> parse_args(int argc, char *argv[]) {
         }
         if (strcmp(arg, "--dump-parse") == 0) {
             opts.dump_parse = true;
+            continue;
+        }
+        if (strcmp(arg, "--lex-only") == 0) {
+            opts.lex_only = true;
+            opts.dump_tokens = true;
+            opts.emit_ir_stdout = false;
+            continue;
+        }
+        if (strcmp(arg, "-") == 0) {
+            opts.input_path = "-";
             continue;
         }
         if (arg[0] == '-') {
@@ -107,6 +118,9 @@ int main(int argc, char *argv[]) {
         const auto &tokens = lexer.tokenize();
         if (opts.dump_tokens) {
             lexer::print_tokens(std::cout, tokens);
+        }
+        if (opts.lex_only) {
+            return 0;
         }
 
         const auto &processed = post_process(tokens);

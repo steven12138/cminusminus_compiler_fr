@@ -1,4 +1,5 @@
 #include <stdexcept>
+#include <cctype>
 
 #include "lexer/lexer.h"
 #include "lexer/regex.h"
@@ -185,13 +186,22 @@ namespace front::lexer {
     }
 
     std::ostream &print_tokens(std::ostream &os, const Token &token) {
+        std::string lexeme_clean;
+        lexeme_clean.reserve(token.lexeme.size());
+        for (unsigned char c: token.lexeme) {
+            if (std::isprint(c)) {
+                lexeme_clean.push_back(static_cast<char>(c));
+            }
+        }
+        const std::string &lexeme = lexeme_clean.empty() ? token.lexeme : lexeme_clean;
+
         // EOF 不输出，直接返回
         if (token.type == TokenType::EndOfFile) {
             return os;
         }
 
         // 共通前缀: 词面值 + 制表符 + '<'
-        os << token.lexeme << '\t' << '<';
+        os << lexeme << '\t' << '<';
 
         switch (token.type) {
             // ===== 关键字 KW =====
@@ -213,63 +223,66 @@ namespace front::lexer {
                 break;
 
             // ===== 运算符 OP =====
-            case TokenType::OpPlus: os << "OP,6";
+            case TokenType::OpPlus: os << "OP,9";
                 break;
-            case TokenType::OpMinus: os << "OP,7";
+            case TokenType::OpMinus: os << "OP,10";
                 break;
-            case TokenType::OpMultiply: os << "OP,8";
+            case TokenType::OpMultiply: os << "OP,11";
                 break;
-            case TokenType::OpDivide: os << "OP,9";
+            case TokenType::OpDivide: os << "OP,12";
                 break;
-            case TokenType::OpMod: os << "OP,10";
+            case TokenType::OpMod: os << "OP,13";
                 break;
-            case TokenType::OpAssign: os << "OP,11";
+            case TokenType::OpAssign: os << "OP,14";
                 break;
-            case TokenType::OpGreater: os << "OP,12";
+            case TokenType::OpGreater: os << "OP,15";
                 break;
-            case TokenType::OpLess: os << "OP,13";
+            case TokenType::OpLess: os << "OP,16";
                 break;
-            case TokenType::OpEqual: os << "OP,14";
+            case TokenType::OpEqual: os << "OP,17";
                 break;
-            case TokenType::OpLessEqual: os << "OP,15";
+            case TokenType::OpLessEqual: os << "OP,18";
                 break;
-            case TokenType::OpGreaterEqual: os << "OP,16";
+            case TokenType::OpGreaterEqual: os << "OP,19";
                 break;
-            case TokenType::OpNotEqual: os << "OP,17";
+            case TokenType::OpNotEqual: os << "OP,20";
                 break;
-            case TokenType::OpAnd: os << "OP,18";
+            case TokenType::OpAnd: os << "OP,21";
                 break;
-            case TokenType::OpOr: os << "OP,19";
+            case TokenType::OpOr: os << "OP,22";
                 break;
 
             // ===== 界符 SE =====
-            case TokenType::SepLParen: os << "SE,20";
+            case TokenType::SepLParen: os << "SE,23";
                 break;
-            case TokenType::SepRParen: os << "SE,21";
+            case TokenType::SepRParen: os << "SE,24";
                 break;
-            case TokenType::SepLBrace: os << "SE,22";
+            case TokenType::SepLBrace: os << "SE,25";
                 break;
-            case TokenType::SepRBrace: os << "SE,23";
+            case TokenType::SepRBrace: os << "SE,26";
                 break;
-            case TokenType::SepSemicolon: os << "SE,24";
+            case TokenType::SepSemicolon: os << "SE,27";
                 break;
-            case TokenType::SepComma: os << "SE,25";
+            case TokenType::SepComma: os << "SE,28";
                 break;
 
             // ===== 标识符 / 常量 =====
             case TokenType::Identifier:
-                os << "IDN," << token.lexeme;
+                os << "IDN," << lexeme;
                 break;
 
             case TokenType::LiteralInt:
-                os << "INT," << token.lexeme;
+                os << "INT," << lexeme;
                 break;
 
             case TokenType::LiteralFloat:
-                os << "FLOAT," << token.lexeme;
+                os << "FLOAT," << lexeme;
                 break;
 
-            // 其他（包括 Spacer / Invalid / KwIntFunc / KwFloatFunc）
+            case TokenType::Invalid:
+                os << "ERROR," << token.loc.line << "," << token.loc.column;
+                break;
+
             default:
                 os << "UNKNOWN";
                 break;

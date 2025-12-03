@@ -48,16 +48,23 @@ add_test(
 set_tests_properties(integration_lli_arith PROPERTIES LABELS "integration;ir")
 
 # Compare move traces against provided lab4 references (ignoring reductions/special symbols).
-set(LAB4_TEST_DIR "${CMAKE_SOURCE_DIR}/../compiler_lab_tju/lab4/test")
-if (EXISTS "${LAB4_TEST_DIR}")
-    foreach (CASE IN ITEMS test1 test2 test3)
-        configure_file(${LAB4_TEST_DIR}/${CASE}.sy ${CMAKE_CURRENT_BINARY_DIR}/data/lab4_${CASE}.sy COPYONLY)
-        configure_file(${LAB4_TEST_DIR}/${CASE}.ref ${CMAKE_CURRENT_BINARY_DIR}/data/lab4_${CASE}.ref COPYONLY)
-        add_test(
-                NAME lab4_trace_${CASE}
-                COMMAND /bin/sh -c
-                "$<TARGET_FILE:cmm> --dump-parse ${CMAKE_CURRENT_BINARY_DIR}/data/lab4_${CASE}.sy | ${CMAKE_SOURCE_DIR}/tests/compare_trace.py ${CMAKE_CURRENT_BINARY_DIR}/data/lab4_${CASE}.ref"
-        )
-        set_tests_properties(lab4_trace_${CASE} PROPERTIES LABELS "integration;trace")
-    endforeach ()
-endif ()
+set(LAB4_TEST_DIR "${CMAKE_SOURCE_DIR}/tests/lab4")
+foreach (CASE IN ITEMS test1 test2 test3)
+    add_test(
+            NAME lab4_trace_${CASE}
+            COMMAND /bin/sh -c
+            "sed \"/^[ \\t]*[@#$^|&:?].*$/d; s/[ \\t][@#$^|&:?][@#$^|&:?]*[ \\t]*$//\" ${LAB4_TEST_DIR}/${CASE}.sy | $<TARGET_FILE:cmm> --dump-parse - | ${CMAKE_SOURCE_DIR}/tests/compare_trace.py ${LAB4_TEST_DIR}/${CASE}.ref"
+    )
+    set_tests_properties(lab4_trace_${CASE} PROPERTIES LABELS "integration;trace")
+endforeach ()
+
+# Lab2 token-level regression (lexer only)
+set(LAB2_TEST_DIR "${CMAKE_SOURCE_DIR}/tests/lab2")
+foreach (CASE IN ITEMS test1 test2 test3)
+    add_test(
+            NAME lab2_lex_${CASE}
+            COMMAND /bin/sh -c
+            "cat ${LAB2_TEST_DIR}/${CASE}.sy | $<TARGET_FILE:cmm> --lex-only - | ${CMAKE_SOURCE_DIR}/tests/compare_tokens.py ${LAB2_TEST_DIR}/${CASE}.ref"
+    )
+    set_tests_properties(lab2_lex_${CASE} PROPERTIES LABELS "integration;lexer")
+endforeach ()
