@@ -12,6 +12,9 @@
 #include "utils/nfa.h"
 #include "utils/util.h"
 
+#include "parser.h"
+#include "token.h"
+#include <vector>
 
 namespace front::grammar {
     struct Item {
@@ -107,6 +110,9 @@ namespace front::grammar {
         void print_action_table(std::ostream &os) const;
 
         void print_goto_table(std::ostream &os) const;
+
+        std::vector<ParseStep> parse(const std::vector<Token> &tokens) const;
+        
 
     private:
         struct ItemHash {
