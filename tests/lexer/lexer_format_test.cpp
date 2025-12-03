@@ -8,12 +8,10 @@ using namespace std;
 
 
 namespace front {
-    
-    
     inline std::string format_token_for_output(const Token &token) {
         std::ostringstream oss;
         oss << token.lexeme << "\t<";
-        
+
         switch (token.type) {
             // ========== 关键字 KW ==========
             case TokenType::KwInt:
@@ -24,7 +22,7 @@ namespace front {
                 break;
             case TokenType::KwReturn:
                 oss << "KW,3";
-                break;
+                break;\
             case TokenType::KwConst:
                 oss << "KW,4";
                 break;
@@ -40,7 +38,7 @@ namespace front {
             case TokenType::KwElse:
                 oss << "KW,8";
                 break;
-            
+
             // ========== 运算符 OP ==========
             case TokenType::OpPlus:
                 oss << "OP,6";
@@ -84,7 +82,7 @@ namespace front {
             case TokenType::OpOr:
                 oss << "OP,19";
                 break;
-            
+
             // ========== 界符 SE ==========
             case TokenType::SepLParen:
                 oss << "SE,20";
@@ -104,33 +102,33 @@ namespace front {
             case TokenType::SepComma:
                 oss << "SE,25";
                 break;
-            
+
             // ========== 标识符 IDN ==========
             case TokenType::Identifier:
                 oss << "IDN," << token.lexeme;
                 break;
-            
+
             // ========== 整数 INT ==========
             case TokenType::LiteralInt:
                 oss << "INT," << token.lexeme;
                 break;
-            
+
             // ========== 浮点数 FLOAT ==========
             case TokenType::LiteralFloat:
                 oss << "FLOAT," << token.lexeme;
                 break;
-            
+
             // ========== 其他情况 ==========
             case TokenType::EndOfFile:
                 // EOF 不输出
                 return "";
                 break;
-            
+
             default:
                 oss << "UNKNOWN";
                 break;
         }
-        
+
         oss << ">";
         return oss.str();
     }
@@ -142,21 +140,15 @@ int main() {
 
     std::ostringstream buf;
     std::string line;
-    INIT_TIMER(Lexer);
     front::lexer::Lexer lexer;
-    STOP_TIMER(Lexer);
-
-    while (std::getline(cin, line)) {
-        buf << line << '\n';
-    }
-
-    const std::string source = buf.str();
+    const std::string source = "int a=1;";
     const auto &tokens = lexer.tokenize(source);
-    
+
     // 使用新的格式化函数输出
     for (const auto &t: tokens) {
         std::string formatted = front::format_token_for_output(t);
-        if (!formatted.empty()) {  // 跳过 EOF
+        if (!formatted.empty()) {
+            // 跳过 EOF
             cout << formatted << '\n';
         }
     }

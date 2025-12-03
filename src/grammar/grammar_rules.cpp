@@ -12,14 +12,14 @@ namespace front::grammar {
         }
 
         // Program-> compUnit EOF
-        add_production("Program", {NT("CompUnit"), Symbol::End()},
+        add_production("Program", {NT("CompUnit")},
                        nullptr, {{"Progrom", "EOF"}});
 
         // compUnit -> ( decl | funcDef)*
-        add_production("CompUnit", {Epsilon()});
-        add_production("CompUnit", {NT("CompUnitItem"), NT("CompUnit")});
-        add_production("CompUnitItem", {NT("Decl")});
-        add_production("CompUnitItem", {NT("FuncDef")});
+        add_production("CompUnit", {Symbol::End()});
+        add_production("CompUnit", {NT("CompUnitItem"), NT("CompUnit"), Symbol::End()});
+        add_production("CompUnitItem", {NT("Decl"), Symbol::End()});
+        add_production("CompUnitItem", {NT("FuncDef"), Symbol::End()});
 
 
         // decl -> constDecl | varDecl;
@@ -105,52 +105,65 @@ namespace front::grammar {
         //   | 'return' (exp)? ';';
         add_production("Stmt", {NT("LVal"), T("="), NT("Exp"), T(";")},
                        nullptr, {{"stmt", ";"}});
-        add_production("Stmt", {NT("ExpOpt"), T(";")},
+        add_production("Stmt", {NT("Exp"), T(";")},
+                       nullptr, {{"stmt", ";"}});
+        add_production("Stmt", {T(";")},
                        nullptr, {{"stmt", ";"}});
         add_production("Stmt", {NT("Block")},
                        nullptr, {{"stmt", "block"}});
-        add_production("Stmt",
-                       {
-                           T("if"), T("("), NT("Cond"), T(")"),
-                           NT("Stmt"), NT("ElseOpt")
-                       });
-        add_production("ElseOpt", {Epsilon()});
-        add_production("ElseOpt", {T("else"), NT("Stmt")});
-        add_production("Stmt", {T("return"), NT("ExpOpt"), T(";")});
-        add_production("ExpOpt", {Epsilon()});
-        add_production("ExpOpt", {NT("Exp")});
+        add_production("Stmt", {
+                           T("if"), T("("), NT("Cond"), T(")"), NT("Stmt")
+                       }, nullptr, {{"stmt", "if"}});
+        add_production("Stmt", {
+                           T("if"), T("("), NT("Cond"), T(")"), NT("Stmt"),
+                           T("else"), NT("Stmt")
+                       }, nullptr, {{"stmt", "if-else"}});
+        add_production("Stmt", {T("return"), NT("Exp"), T(";")},
+                       nullptr, {{"stmt", ";"}});
+        add_production("Stmt", {T("return"), T(";")},
+                       nullptr, {{"stmt", ";"}});
 
         // exp -> addExp;
-        add_production("Exp", {NT("AddExp")});
-        // add_production("Exp", {NT("LOrExp")});
+        // add_production("Exp", {NT("AddExp")});
+        add_production("Exp", {NT("LOrExp")},
+                       nullptr, {{"exp", "lOrExp"}});
 
         // cond -> lOrExp;
-        add_production("Cond", {NT("LOrExp")});
+        add_production("Cond", {NT("LOrExp")},
+                       nullptr, {{"cond", "lOrExp"}});
         // add_production("Cond", {NT("Exp")});
 
         // lVal -> Ident;
-        add_production("LVal", {T("Ident")});
+        add_production("LVal", {T("Ident")},
+                       nullptr, {{"lVal", "Ident"}});
 
         // primaryExp -> '(' exp ')'
         //     | lVal
         //     | number;
-        add_production("PrimaryExp", {T("("), NT("Exp"), T(")")});
-        add_production("PrimaryExp", {NT("LVal")});
-        add_production("PrimaryExp", {NT("Number")});
+        add_production("PrimaryExp", {T("("), NT("Exp"), T(")")},
+                       nullptr, {{"primaryExp", ")"}});
+        add_production("PrimaryExp", {NT("LVal")},
+                       nullptr, {{"primaryExp", "lVal"}});
+        add_production("PrimaryExp", {NT("Number")},
+                       nullptr, {{"primaryExp", "number"}});
 
         // number -> IntConst | floatConst;
-        add_production("Number", {NT("IntConst")});
-        add_production("Number", {NT("FloatConst")});
+        add_production("Number", {NT("IntConst")},
+                       nullptr, {{"number", "IntConst"}});
+        add_production("Number", {NT("FloatConst")},
+                       nullptr, {{"number", "floatConst"}});
 
         // unaryExp -> primaryExp
         //     | Ident '(' (funcRParams)? ')'
         //     | unaryOp unaryExp;
-        add_production("UnaryExp", {NT("PrimaryExp")});
+        add_production("UnaryExp", {NT("PrimaryExp")},
+                       nullptr, {{"unaryExp", "primaryExp"}});
         add_production("UnaryExp", {
                            T("Ident"),
                            T("("), NT("FuncRParamsOpt"), T(")")
-                       });
-        add_production("UnaryExp", {NT("UnaryOp"), NT("UnaryExp")});
+                       }, nullptr, {{"unaryExp", "call"}});
+        add_production("UnaryExp", {NT("UnaryOp"), NT("UnaryExp")},
+                       nullptr, {{"unaryExp", "unaryOp"}});
         add_production("FuncRParamsOpt", {Epsilon()});
         add_production("FuncRParamsOpt", {NT("FuncRParams")});
 
@@ -170,39 +183,58 @@ namespace front::grammar {
 
         // mulExp -> unaryExp
         //   | mulExp ('*' | '/' | '%') unaryExp ;
-        add_production("MulExp", {NT("UnaryExp")});
-        add_production("MulExp", {NT("MulExp"), T("*"), NT("UnaryExp")});
-        add_production("MulExp", {NT("MulExp"), T("/"), NT("UnaryExp")});
-        add_production("MulExp", {NT("MulExp"), T("%"), NT("UnaryExp")});
+        add_production("MulExp", {NT("UnaryExp")},
+                       nullptr, {{"mulExp", "unaryExp"}});
+        add_production("MulExp", {NT("MulExp"), T("*"), NT("UnaryExp")},
+                       nullptr, {{"mulExp", "*"}});
+        add_production("MulExp", {NT("MulExp"), T("/"), NT("UnaryExp")},
+                       nullptr, {{"mulExp", "/"}});
+        add_production("MulExp", {NT("MulExp"), T("%"), NT("UnaryExp")},
+                       nullptr, {{"mulExp", "%"}});
 
         // addExp -> mulExp | addExp ('+' | '-') mulExp;
-        add_production("AddExp", {NT("MulExp")});
-        add_production("AddExp", {NT("AddExp"), T("+"), NT("MulExp")});
-        add_production("AddExp", {NT("AddExp"), T("-"), NT("MulExp")});
+        add_production("AddExp", {NT("MulExp")},
+                       nullptr, {{"addExp", "mulExp"}});
+        add_production("AddExp", {NT("AddExp"), T("+"), NT("MulExp")},
+                       nullptr, {{"addExp", "+"}});
+        add_production("AddExp", {NT("AddExp"), T("-"), NT("MulExp")},
+                       nullptr, {{"addExp", "-"}});
 
         // relExp -> addExp
         //   | relExp ('<' | '>' | '<=' | '>=') addExp;
-        add_production("RelExp", {NT("AddExp")});
-        add_production("RelExp", {NT("RelExp"), T("<"), NT("AddExp")});
-        add_production("RelExp", {NT("RelExp"), T(">"), NT("AddExp")});
-        add_production("RelExp", {NT("RelExp"), T("<="), NT("AddExp")});
-        add_production("RelExp", {NT("RelExp"), T(">="), NT("AddExp")});
+        add_production("RelExp", {NT("AddExp")},
+                       nullptr, {{"relExp", "addExp"}});
+        add_production("RelExp", {NT("RelExp"), T("<"), NT("AddExp")},
+                       nullptr, {{"relExp", "<"}});
+        add_production("RelExp", {NT("RelExp"), T(">"), NT("AddExp")},
+                       nullptr, {{"relExp", ">"}});
+        add_production("RelExp", {NT("RelExp"), T("<="), NT("AddExp")},
+                       nullptr, {{"relExp", "<="}});
+        add_production("RelExp", {NT("RelExp"), T(">="), NT("AddExp")},
+                       nullptr, {{"relExp", ">="}});
 
         // eqExp -> relExp
         //   | eqExp ('==' | '!=') relExp;
-        add_production("EqExp", {NT("RelExp")});
-        add_production("EqExp", {NT("EqExp"), T("=="), NT("RelExp")});
-        add_production("EqExp", {NT("EqExp"), T("!="), NT("RelExp")});
+        add_production("EqExp", {NT("RelExp")},
+                       nullptr, {{"eqExp", "relExp"}});
+        add_production("EqExp", {NT("EqExp"), T("=="), NT("RelExp")},
+                       nullptr, {{"eqExp", "=="}});
+        add_production("EqExp", {NT("EqExp"), T("!="), NT("RelExp")},
+                       nullptr, {{"eqExp", "!="}});
 
         // lAndExp -> eqExp
         //    | lAndExp '&&' eqExp;
-        add_production("LAndExp", {NT("EqExp")});
-        add_production("LAndExp", {NT("LAndExp"), T("&&"), NT("EqExp")});
+        add_production("LAndExp", {NT("EqExp")},
+                       nullptr, {{"lAndExp", "eqExp"}});
+        add_production("LAndExp", {NT("LAndExp"), T("&&"), NT("EqExp")},
+                       nullptr, {{"lAndExp", "&&"}});
 
         // lOrExp -> lAndExp
         //     | lOrExp '||' lAndExp;
-        add_production("LOrExp", {NT("LAndExp")});
-        add_production("LOrExp", {NT("LOrExp"), T("||"), NT("LAndExp")});
+        add_production("LOrExp", {NT("LAndExp")},
+                       nullptr, {{"lOrExp", "lAndExp"}});
+        add_production("LOrExp", {NT("LOrExp"), T("||"), NT("LAndExp")},
+                       nullptr, {{"lOrExp", "||"}});
 
         // constExp -> addExp;
         add_production("ConstExp", {NT("AddExp")},

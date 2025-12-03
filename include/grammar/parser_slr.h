@@ -111,7 +111,7 @@ namespace front::grammar {
 
         void print_goto_table(std::ostream &os) const;
 
-        std::vector<ParseStep> parse(const std::vector<Token> &tokens) const;
+        ParseResult parse(const std::vector<Token> &tokens) const;
         
 
     private:

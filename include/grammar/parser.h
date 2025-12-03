@@ -10,9 +10,17 @@ namespace front::grammar {
         Reduction, Move, Accept, Error
     };
 
+
     struct ParseStep {
         Symbol top;
         Symbol lookahead;
         ParseAction action{Error};
+    };
+
+
+    struct ParseResult {
+        ast::ProgramPtr program;
+        std::vector<ParseStep> actions;
+        bool is_error = false;
     };
 }
