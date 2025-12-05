@@ -207,15 +207,6 @@ namespace front {
         // 2. initial partition
         auto alphabet = collect_alphabet();
 
-        std::vector<std::vector<RevEdge> > revGraph(nStates);
-        for (int from = 0; from < nStates; ++from) {
-            if (!reachable[from]) continue;
-            for (const auto &st = st_[from];
-                 const auto &[sym, to]: st.edges) {
-                if (!reachable[to]) continue;
-                revGraph[to].push_back(RevEdge{sym, from});
-            }
-        }
 
         std::vector<int> unacceptStates;
         unacceptStates.reserve(nStates);

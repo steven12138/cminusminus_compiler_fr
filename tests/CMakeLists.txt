@@ -1,7 +1,3 @@
-# tests/CMakeLists.txt
-include(CTest)
-enable_testing()
-
 file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS
         "${CMAKE_CURRENT_SOURCE_DIR}/*/*.cpp")
 
@@ -53,7 +49,7 @@ foreach (CASE IN ITEMS test1 test2 test3)
     add_test(
             NAME lab4_trace_${CASE}
             COMMAND /bin/sh -c
-            "sed \"/^[ \\t]*[@#$^|&:?].*$/d; s/[ \\t][@#$^|&:?][@#$^|&:?]*[ \\t]*$//\" ${LAB4_TEST_DIR}/${CASE}.sy | $<TARGET_FILE:cmm> --dump-parse - | ${CMAKE_SOURCE_DIR}/tests/compare_trace.py ${LAB4_TEST_DIR}/${CASE}.ref"
+             "cat ${LAB4_TEST_DIR}/${CASE}.sy | $<TARGET_FILE:cmm> --gtrace-only - | ${CMAKE_SOURCE_DIR}/tests/compare_trace.py ${LAB4_TEST_DIR}/${CASE}.ref"
     )
     set_tests_properties(lab4_trace_${CASE} PROPERTIES LABELS "integration;trace")
 endforeach ()

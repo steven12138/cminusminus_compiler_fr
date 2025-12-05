@@ -1,36 +1,33 @@
 #!/usr/bin/env python3
 """
-Compare parser traces against a reference, focusing on move steps only.
-Reference format follows lab4 .ref files; actual trace is read from stdin.
+Compare parser traces against a reference, keeping every parse action
+(move/reduction/accept/error). Reference format follows lab4 .ref files;
+actual trace is read from stdin. Assumes parser output only (no IR),
+e.g. via --gtrace-only.
 """
 
 import sys
 from typing import List
 
 
-def load_moves_from_lines(lines: List[str]) -> List[str]:
-    moves: List[str] = []
+def load_steps_from_lines(lines: List[str]) -> List[str]:
+    steps: List[str] = []
     for raw in lines:
         line = raw.strip()
         if not line:
             continue
-        if line.startswith("define "):
-            break  # stop before IR output
         parts = line.split()
         # Expect: <index> <top#lookahead> <action>
         if len(parts) < 3:
             continue
-        action = parts[-1]
-        if action != "move":
-            continue
-        entry = " ".join(parts[1:-1])  # drop index and action
-        moves.append(entry)
-    return moves
+        entry = " ".join(parts[1:])  # drop index; keep rest including action
+        steps.append(entry)
+    return steps
 
 
 def load_moves_from_file(path: str) -> List[str]:
     with open(path, "r", encoding="utf-8") as f:
-        return load_moves_from_lines(f.readlines())
+        return load_steps_from_lines(f.readlines())
 
 
 def main() -> int:
@@ -40,7 +37,7 @@ def main() -> int:
 
     ref_path = sys.argv[1]
     ref_moves = load_moves_from_file(ref_path)
-    actual_moves = load_moves_from_lines(sys.stdin.readlines())
+    actual_moves = load_steps_from_lines(sys.stdin.readlines())
 
     if ref_moves == actual_moves:
         return 0

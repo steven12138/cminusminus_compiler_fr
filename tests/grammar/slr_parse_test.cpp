@@ -11,8 +11,8 @@ using namespace front;
 int main() {
     const std::string source = R"(
 
-void d(){
-return ;
+int d(){
+return 1;
 }
 
 void main(){

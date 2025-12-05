@@ -102,7 +102,6 @@ namespace front::grammar {
         explicit SLRParser(Grammar grammar);
 
 
-
         void print_item_sets(std::ostream &os) const;
 
         void print_go_function(std::ostream &os) const;
@@ -112,7 +111,6 @@ namespace front::grammar {
         void print_goto_table(std::ostream &os) const;
 
         ParseResult parse(const std::vector<Token> &tokens) const;
-        
 
     private:
         struct ItemHash {
@@ -147,8 +145,6 @@ namespace front::grammar {
         std::pair<int, bool> add_state(ItemSetType &&items);
 
         Grammar grammar_;
-
-        NFA<Symbol> nfa_;
 
         struct ItemKeyHash {
             size_t operator()(const std::vector<Item> &items) const {

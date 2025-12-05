@@ -21,6 +21,7 @@ static void print_usage(const char *prog) {
             << "  -S                Print IR to stdout (default if no -o)\n"
             << "  --dump-tokens     Print lexer output to stdout\n"
             << "  --dump-parse      Print SLR parse trace to stdout\n"
+            << "  --gtrace-only     Parse and print trace only (no IR generation)\n"
             << "  -h, --help        Show help\n"
             << "\nSource file:\n"
             << "  <source-file>     Path to source file (default: stdin)\n"
@@ -40,6 +41,7 @@ struct Options {
     bool dump_tokens{false};
     bool dump_parse{false};
     bool lex_only{false};
+    bool gtrace_only{false};
 };
 
 static std::optional<Options> parse_args(int argc, char *argv[]) {
@@ -71,6 +73,13 @@ static std::optional<Options> parse_args(int argc, char *argv[]) {
             opts.dump_parse = true;
             continue;
         }
+        if (strcmp(arg, "--gtrace-only") == 0) {
+            opts.dump_parse = true;
+            opts.gtrace_only = true;
+            opts.emit_ir_stdout = false;
+            opts.output_file.clear();
+            continue;
+        }
         if (strcmp(arg, "--lex-only") == 0) {
             opts.lex_only = true;
             opts.dump_tokens = true;
@@ -99,16 +108,23 @@ int main(int argc, char *argv[]) {
     if (!opts_opt) {
         return 1;
     }
-    const auto opts = *opts_opt;
+    const auto [
+        input_path,
+        output_file,
+        emit_ir_stdout,
+        dump_tokens,
+        dump_parse,
+        lex_only,
+        gtrace_only] = *opts_opt;
 
     try {
         std::string source_code;
-        if (opts.input_path == "-") {
+        if (input_path == "-") {
             source_code = read_all_from_stream(std::cin);
         } else {
-            std::ifstream ifs(opts.input_path);
+            std::ifstream ifs(input_path);
             if (!ifs) {
-                std::cerr << "Error: cannot open input file: " << opts.input_path << "\n";
+                std::cerr << "Error: cannot open input file: " << input_path << "\n";
                 return 1;
             }
             source_code = read_all_from_stream(ifs);
@@ -116,10 +132,10 @@ int main(int argc, char *argv[]) {
 
         lexer::Lexer lexer{std::move(source_code)};
         const auto &tokens = lexer.tokenize();
-        if (opts.dump_tokens) {
+        if (dump_tokens) {
             lexer::print_tokens(std::cout, tokens);
         }
-        if (opts.lex_only) {
+        if (lex_only) {
             return 0;
         }
 
@@ -128,7 +144,7 @@ int main(int argc, char *argv[]) {
         const grammar::SLRParser parser{std::move(grammar)};
         const auto &[root, steps, success] = parser.parse(processed);
 
-        if (opts.dump_parse) {
+        if (dump_parse) {
             grammar::print_parse_steps(std::cout, steps);
         }
 
@@ -137,20 +153,23 @@ int main(int argc, char *argv[]) {
             return 1;
         }
 
-        ir::IRGenerator gen;
-        auto ir_result = gen.generate(root);
-        std::string ir = ir_result.module->print();
+        if (gtrace_only) {
+            return 0;
+        }
 
-        if (!opts.output_file.empty()) {
-            std::ofstream ofs(opts.output_file);
+        auto [module] = ir::IRGenerator::generate(root);
+        std::string ir = module->print();
+
+        if (!output_file.empty()) {
+            std::ofstream ofs(output_file);
             if (!ofs) {
-                std::cerr << "Error: cannot write to output file: " << opts.output_file << "\n";
+                std::cerr << "Error: cannot write to output file: " << output_file << "\n";
                 return 1;
             }
             ofs << ir;
         }
 
-        if (opts.emit_ir_stdout) {
+        if (emit_ir_stdout) {
             std::cout << ir << std::endl;
         }
     } catch (const std::exception &e) {

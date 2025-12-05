@@ -296,7 +296,7 @@ namespace front::lexer {
                                const std::vector<Token> &tokens) {
         for (const auto &tok: tokens) {
             if (tok.type == TokenType::EndOfFile) {
-                continue; // 按你原来语义 EOF 不输出
+                continue;
             }
             print_tokens(os, tok);
             os << '\n';

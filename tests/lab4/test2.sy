@@ -17,9 +17,6 @@ void main ( ) {
   x = ( x <= y ) ;
   x = ( x >= y ) ;
 
-  ^
-  &
-  : ?
 
   return ;
 }

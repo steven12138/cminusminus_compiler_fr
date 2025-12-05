@@ -6,6 +6,10 @@ set(CMAKE_CXX_STANDARD 23)
 
 set(TARGET_NAME "cmm")
 
+# Enable CTest at the top level so ctest can discover subdirectory tests.
+include(CTest)
+enable_testing()
+
 # for vscode extensions
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
