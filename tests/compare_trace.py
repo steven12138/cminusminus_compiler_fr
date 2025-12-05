@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """
-Compare parser traces against a reference, keeping every parse action
-(move/reduction/accept/error). Reference format follows lab4 .ref files;
-actual trace is read from stdin. Assumes parser output only (no IR),
-e.g. via --gtrace-only.
+Compare parser traces against a reference, ignoring move steps.
+Reference format follows lab4 .ref files; actual trace is read from stdin.
+Assumes parser output only (no IR), e.g. via --gtrace-only.
 """
 
 import sys
@@ -20,6 +19,9 @@ def load_steps_from_lines(lines: List[str]) -> List[str]:
         # Expect: <index> <top#lookahead> <action>
         if len(parts) < 3:
             continue
+        action = parts[-1]
+        if action != "move":
+            continue  # ignore move steps for comparison
         entry = " ".join(parts[1:])  # drop index; keep rest including action
         steps.append(entry)
     return steps

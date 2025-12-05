@@ -1,0 +1,14 @@
+int main(){
+    float a = 3.5, b = 2.0;
+    float c = a + b;
+    float d = a - b;
+    float e = a * b;
+    float f = a / b;
+    int ok = 0;
+    ok = ok + (c > 5.4);
+    ok = ok + (d < 2.0);
+    ok = ok + (e == 7.0);
+    ok = ok + (f != 2.0);
+    ok = ok + ((f > 1.7) && (f < 1.8));
+    return ok;
+}

@@ -61,11 +61,15 @@ namespace front::ir {
 
         Value *make_int(int value);
 
+        Value *make_float(float value);
+
         Value *make_bool(bool value) const;
 
         Value *as_bool(Value *value);
 
         Value *as_int(Value *value);
+
+        Value *as_float(Value *value);
 
         Value *cast(Value *value, ast::BasicType target);
 

@@ -124,7 +124,7 @@ int main(int argc, char *argv[]) {
         } else {
             std::ifstream ifs(input_path);
             if (!ifs) {
-                std::cerr << "Error: cannot open input file: " << input_path << "\n";
+                std::cerr << "Error: cannot open input file: " << input_path << std::endl;
                 return 1;
             }
             source_code = read_all_from_stream(ifs);
@@ -163,7 +163,7 @@ int main(int argc, char *argv[]) {
         if (!output_file.empty()) {
             std::ofstream ofs(output_file);
             if (!ofs) {
-                std::cerr << "Error: cannot write to output file: " << output_file << "\n";
+                std::cerr << "Error: cannot write to output file: " << output_file << std::endl;
                 return 1;
             }
             ofs << ir;

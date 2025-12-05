@@ -83,6 +83,52 @@ namespace front::ir {
         return std::nullopt;
     }
 
+    std::optional<float> eval_float_constant(const Expr *expr) {
+        if (const auto *lit = dynamic_cast<const LiteralFloat *>(expr)) {
+            return lit->value;
+        }
+        if (const auto *lit_int = dynamic_cast<const LiteralInt *>(expr)) {
+            return static_cast<float>(lit_int->value);
+        }
+        if (const auto *unary = dynamic_cast<const UnaryExpr *>(expr)) {
+            auto inner = eval_float_constant(unary->operand.get());
+            if (!inner) {
+                return std::nullopt;
+            }
+            switch (unary->op) {
+                case UnaryOp::Positive:
+                    return *inner;
+                case UnaryOp::Negative:
+                    return -*inner;
+                case UnaryOp::LogicalNot:
+                    return *inner == 0.0f ? 1.0f : 0.0f;
+            }
+        }
+        if (const auto *binary = dynamic_cast<const BinaryExpr *>(expr)) {
+            auto lhs = eval_float_constant(binary->lhs.get());
+            auto rhs = eval_float_constant(binary->rhs.get());
+            if (!lhs || !rhs) {
+                return std::nullopt;
+            }
+            switch (binary->op) {
+                case BasicOp::Add: return *lhs + *rhs;
+                case BasicOp::Sub: return *lhs - *rhs;
+                case BasicOp::Mul: return *lhs * *rhs;
+                case BasicOp::Div: return *rhs == 0.0f ? 0.0f : *lhs / *rhs;
+                case BasicOp::Mod: return std::nullopt;
+                case BasicOp::Lt: return *lhs < *rhs ? 1.0f : 0.0f;
+                case BasicOp::Gt: return *lhs > *rhs ? 1.0f : 0.0f;
+                case BasicOp::Le: return *lhs <= *rhs ? 1.0f : 0.0f;
+                case BasicOp::Ge: return *lhs >= *rhs ? 1.0f : 0.0f;
+                case BasicOp::Eq: return *lhs == *rhs ? 1.0f : 0.0f;
+                case BasicOp::Neq: return *lhs != *rhs ? 1.0f : 0.0f;
+                case BasicOp::And: return (*lhs != 0.0f) && (*rhs != 0.0f) ? 1.0f : 0.0f;
+                case BasicOp::Or: return (*lhs != 0.0f) || (*rhs != 0.0f) ? 1.0f : 0.0f;
+            }
+        }
+        return std::nullopt;
+    }
+
 
     CodegenContext::CodegenContext(std::unique_ptr<Module> module)
         : module_ptr(std::move(module)) {
@@ -209,6 +255,10 @@ namespace front::ir {
         return ConstantInt::get(value, module_ptr.get());
     }
 
+    Value *CodegenContext::make_float(float value) {
+        return ConstantFloat::get(value, module_ptr.get());
+    }
+
     Value *CodegenContext::make_bool(bool value) const {
         return ConstantInt::get(value, module_ptr.get());
     }
@@ -220,6 +270,9 @@ namespace front::ir {
         if (value->get_type()->is_int32_type()) {
             return builder().create_icmp_ne(value, make_int(0));
         }
+        if (value->get_type()->is_float_type()) {
+            return builder().create_icmp_ne(value, make_float(0.0f));
+        }
         throw std::runtime_error("Cannot convert value to bool");
     }
 
@@ -230,7 +283,24 @@ namespace front::ir {
         if (value->get_type()->is_int1_type()) {
             return builder().create_zext(value, module_ptr->get_int32_type());
         }
+        if (value->get_type()->is_float_type()) {
+            return builder().create_fptosi(value, module_ptr->get_int32_type());
+        }
         throw std::runtime_error("Cannot convert value to int32");
+    }
+
+    Value *CodegenContext::as_float(Value *value) {
+        if (value->get_type()->is_float_type()) {
+            return value;
+        }
+        if (value->get_type()->is_int32_type()) {
+            return builder().create_sitofp(value, module_ptr->get_float_type());
+        }
+        if (value->get_type()->is_int1_type()) {
+            auto *widen = builder().create_zext(value, module_ptr->get_int32_type());
+            return builder().create_sitofp(widen, module_ptr->get_float_type());
+        }
+        throw std::runtime_error("Cannot convert value to float");
     }
 
     Value *CodegenContext::cast(Value *value, BasicType target) {
@@ -243,7 +313,7 @@ namespace front::ir {
                 }
                 return value;
             case BasicType::Float:
-                throw std::runtime_error("Float lowering is not implemented");
+                return as_float(value);
         }
         throw std::runtime_error("Unknown cast target");
     }
@@ -266,8 +336,8 @@ namespace front::ast {
         return ctx.make_int(value);
     }
 
-    Value *LiteralFloat::codegen(CodegenContext &) {
-        throw std::runtime_error("Float literal codegen is not implemented");
+    Value *LiteralFloat::codegen(CodegenContext &ctx) {
+        return ctx.make_float(value);
     }
 
     Value *IdentifierExpr::codegen(CodegenContext &ctx) {
@@ -280,10 +350,15 @@ namespace front::ast {
 
     Value *UnaryExpr::codegen(CodegenContext &ctx) {
         auto *operand_val = operand->codegen(ctx);
+        const bool is_float = operand_val->get_type()->is_float_type();
         switch (op) {
             case UnaryOp::Positive:
-                return ctx.as_int(operand_val);
+                return is_float ? ctx.as_float(operand_val) : ctx.as_int(operand_val);
             case UnaryOp::Negative: {
+                if (is_float) {
+                    auto *zero = ctx.make_float(0.0f);
+                    return ctx.builder().create_fsub(zero, ctx.as_float(operand_val));
+                }
                 auto *zero = ctx.make_int(0);
                 return ctx.builder().create_isub(zero, ctx.as_int(operand_val));
             }
@@ -328,6 +403,38 @@ namespace front::ast {
 
         auto *lhs_val = lhs->codegen(ctx);
         auto *rhs_val = rhs->codegen(ctx);
+        const bool use_float = lhs_val->get_type()->is_float_type() || rhs_val->get_type()->is_float_type();
+        if (use_float) {
+            auto *lhs_f = ctx.as_float(lhs_val);
+            auto *rhs_f = ctx.as_float(rhs_val);
+            switch (op) {
+                case BasicOp::Add:
+                    return ctx.builder().create_fadd(lhs_f, rhs_f);
+                case BasicOp::Sub:
+                    return ctx.builder().create_fsub(lhs_f, rhs_f);
+                case BasicOp::Mul:
+                    return ctx.builder().create_fmul(lhs_f, rhs_f);
+                case BasicOp::Div:
+                    return ctx.builder().create_fdiv(lhs_f, rhs_f);
+                case BasicOp::Mod:
+                    throw std::runtime_error("Modulo is not supported for float");
+                case BasicOp::Lt:
+                    return ctx.builder().create_icmp_lt(lhs_f, rhs_f);
+                case BasicOp::Gt:
+                    return ctx.builder().create_icmp_gt(lhs_f, rhs_f);
+                case BasicOp::Le:
+                    return ctx.builder().create_icmp_le(lhs_f, rhs_f);
+                case BasicOp::Ge:
+                    return ctx.builder().create_icmp_ge(lhs_f, rhs_f);
+                case BasicOp::Eq:
+                    return ctx.builder().create_icmp_eq(lhs_f, rhs_f);
+                case BasicOp::Neq:
+                    return ctx.builder().create_icmp_ne(lhs_f, rhs_f);
+                case BasicOp::And:
+                case BasicOp::Or:
+                    break;
+            }
+        }
         switch (op) {
             case BasicOp::Add:
                 return ctx.builder().create_iadd(ctx.as_int(lhs_val), ctx.as_int(rhs_val));
@@ -406,7 +513,11 @@ namespace front::ast {
             return;
         }
         if (!value) {
-            ctx.builder().create_ret(ctx.make_int(0));
+            if (*ctx.current_return_type == BasicType::Float) {
+                ctx.builder().create_ret(ctx.make_float(0.0f));
+            } else {
+                ctx.builder().create_ret(ctx.make_int(0));
+            }
             return;
         }
         auto *val = ctx.cast(value->codegen(ctx), *ctx.current_return_type);
@@ -455,11 +566,19 @@ namespace front::ast {
             for (auto &init: items) {
                 Constant *initializer = nullptr;
                 if (init.value) {
-                    const auto folded = eval_int_constant(init.value.get());
-                    if (!folded) {
-                        throw std::runtime_error("Global initializers must be constant: " + init.name);
+                    if (type == BasicType::Float) {
+                        const auto folded = eval_float_constant(init.value.get());
+                        if (!folded) {
+                            throw std::runtime_error("Global initializers must be constant: " + init.name);
+                        }
+                        initializer = ConstantFloat::get(*folded, &ctx.module());
+                    } else {
+                        const auto folded = eval_int_constant(init.value.get());
+                        if (!folded) {
+                            throw std::runtime_error("Global initializers must be constant: " + init.name);
+                        }
+                        initializer = ConstantInt::get(*folded, &ctx.module());
                     }
-                    initializer = ConstantInt::get(*folded, &ctx.module());
                 } else {
                     initializer = ConstantZero::get(ir_type, &ctx.module());
                 }
@@ -512,6 +631,8 @@ namespace front::ast {
         if (tail_block && !has_terminator(tail_block)) {
             if (type == BasicType::Void) {
                 ctx.builder().create_void_ret();
+            } else if (type == BasicType::Float) {
+                ctx.builder().create_ret(ctx.make_float(0.0f));
             } else {
                 ctx.builder().create_ret(ctx.make_int(0));
             }
