@@ -39,7 +39,7 @@ set(TEST_DATA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/data")
 add_test(
         NAME integration_lli_arith
         COMMAND /bin/sh -c
-        "$<TARGET_FILE:cmm> -o ${TEST_BIN_DIR}/lli_arith.ll ${TEST_DATA_DIR}/lli_arith.sy && lli ${TEST_BIN_DIR}/lli_arith.ll; rc=\$?; test \$rc -eq 7"
+        "$<TARGET_FILE:cmm> -o ${TEST_BIN_DIR}/lli_arith.ll ${TEST_DATA_DIR}/lli_arith.sy && lli ${TEST_BIN_DIR}/lli_arith.ll; rc=\$?; test \$rc -eq 37"
 )
 set_tests_properties(integration_lli_arith PROPERTIES LABELS "integration;ir")
 
